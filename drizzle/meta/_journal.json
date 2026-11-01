@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791035895836,
+      "tag": "0000_rainy_jetstream",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791036846992,
+      "tag": "0001_invoice_immutability",
+      "breakpoints": true
+    }
+  ]
+}

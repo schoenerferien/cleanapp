@@ -1,0 +1,26 @@
+# systemd-Dienst für CleaningHub. Ablage: /etc/systemd/system/cleaninghub.service
+# Die App lauscht nur auf 127.0.0.1 – von außen ist sie ausschließlich über Caddy (HTTPS) erreichbar.
+
+[Unit]
+Description=CleaningHub
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=cleaninghub
+WorkingDirectory=/opt/cleaninghub/repo/poc
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -H 127.0.0.1 -p 3000
+Restart=on-failure
+RestartSec=5
+
+# Härtung: Dateisystem schreibgeschützt bis auf Fotoablage und Next.js-Cache
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/cleaninghub /opt/cleaninghub/repo/poc/.next
+
+[Install]
+WantedBy=multi-user.target

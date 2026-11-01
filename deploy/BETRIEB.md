@@ -1,0 +1,113 @@
+# Betrieb auf einem eigenen Server (HTTPS)
+
+Eine Instanz je Firma: kleiner Linux-Server (z. B. Ubuntu 24.04) bei einem deutschen Anbieter, **gemietet und bezahlt von der Firma selbst**.
+Davor Caddy als Reverse-Proxy mit automatischem HTTPS, Daten in PostgreSQL, Fotos und Rechnungs-PDFs unter `/var/lib/cleaninghub`.
+
+```
+Internet ──443──▶ Caddy (HTTPS, HSTS) ──▶ 127.0.0.1:3000 Next.js ──▶ PostgreSQL (lokal)
+                                                         └──▶ /var/lib/cleaninghub/storage
+```
+
+> **Vor echten Daten:** Backups (Datenbank + `/var/lib/cleaninghub`) einrichten und eine Wiederherstellung einmal testen.
+> Diese Anleitung deckt Backups noch nicht ab.
+
+## 1. Vorbereitung
+
+- Domain bzw. Subdomain (z. B. `app.firma.de`) mit A-/AAAA-Eintrag auf die Server-IP.
+- Firewall: nur 22, 80 und 443 offen.
+
+```bash
+sudo ufw allow OpenSSH && sudo ufw allow 80,443/tcp && sudo ufw enable
+```
+
+## 2. Pakete
+
+```bash
+# Node.js 22 (NodeSource), PostgreSQL, Caddy
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -
+sudo apt install -y nodejs postgresql git unzip
+sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+sudo apt update && sudo apt install -y caddy
+```
+
+## 3. Benutzer, Verzeichnisse, Datenbank
+
+```bash
+sudo useradd --system --create-home --home-dir /opt/cleaninghub cleaninghub
+sudo mkdir -p /var/lib/cleaninghub/storage && sudo chown -R cleaninghub: /var/lib/cleaninghub
+
+DBPASS=$(openssl rand -base64 24 | tr -d '/+=')
+sudo -u postgres psql -c "CREATE ROLE cleaninghub LOGIN PASSWORD '$DBPASS';"
+sudo -u postgres psql -c "CREATE DATABASE cleaninghub OWNER cleaninghub;"
+echo "$DBPASS"   # für DATABASE_URL notieren
+```
+
+## 4. App installieren
+
+```bash
+sudo -iu cleaninghub
+git clone <privates-repo> /opt/cleaninghub/repo   # oder per scp kopieren
+cd /opt/cleaninghub/repo/poc
+npm ci
+```
+
+`.env.local` anlegen (`chmod 600 .env.local`):
+
+```bash
+DATABASE_URL=postgres://cleaninghub:<DBPASS>@localhost:5432/cleaninghub
+BETTER_AUTH_SECRET=<node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))">
+BETTER_AUTH_URL=https://app.firma.de
+STORAGE_DIR=/var/lib/cleaninghub/storage
+KI_FOTOPRUEFUNG=aus
+```
+
+`BETTER_AUTH_URL` muss mit `https://` beginnen – dann werden die Login-Cookies als „Secure“ gesetzt.
+
+```bash
+npm run db:migrate
+npm run build
+npm run firma:anlegen -- "Firmenname" "Vorname Nachname" login@firma.de   # gibt das Startpasswort einmal aus
+exit
+```
+
+`npm run db:seed` **nicht** auf dem Server ausführen – es leert alle Tabellen (bricht ab, sobald eine echte Firma existiert).
+
+## 5. Dienst und HTTPS starten
+
+```bash
+sudo cp /opt/cleaninghub/repo/poc/deploy/cleaninghub.service /etc/systemd/system/
+sudo systemctl daemon-reload && sudo systemctl enable --now cleaninghub
+
+sudo cp /opt/cleaninghub/repo/poc/deploy/Caddyfile /etc/caddy/Caddyfile
+sudo sed -i 's/app.example.de/app.firma.de/' /etc/caddy/Caddyfile
+sudo systemctl reload caddy
+```
+
+Caddy holt das Zertifikat beim ersten Aufruf selbst und verlängert es automatisch.
+
+## 6. Prüfen
+
+```bash
+curl -sI https://app.firma.de/login | grep -iE "strict-transport|x-content-type|x-frame|content-security"
+curl -sI http://app.firma.de      # muss auf https umleiten (308)
+curl -s  http://<server-ip>:3000  # darf NICHT antworten (App nur lokal erreichbar)
+journalctl -u cleaninghub -f      # Logs der App
+```
+
+## Updates
+
+```bash
+sudo -iu cleaninghub
+cd /opt/cleaninghub/repo && git pull && cd poc
+npm ci && npm run db:migrate && npm run build
+exit
+sudo systemctl restart cleaninghub
+```
+
+## Monatsarchiv
+
+Die Firma lädt jeden Monat im Dashboard das **Monatsarchiv** herunter (Arbeitszeiten als CSV, ausgestellte Rechnungen als PDF,
+`LIESMICH.txt` mit Prüfsummen) und bewahrt es selbst auf: Arbeitszeiten mindestens 2 Jahre (§ 17 MiLoG), Rechnungen 8 Jahre.
+Das Dashboard erinnert, bis das Archiv des Vormonats heruntergeladen wurde.

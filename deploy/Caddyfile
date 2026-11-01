@@ -1,0 +1,21 @@
+# Reverse-Proxy vor CleaningHub mit automatischem HTTPS (Let's Encrypt).
+# Domain anpassen; der DNS-Eintrag (A/AAAA) muss auf diesen Server zeigen. Ports 80 und 443 müssen offen sein.
+# Caddy setzt X-Forwarded-For auf die echte Client-IP und ignoriert mitgeschickte Werte –
+# darauf verlässt sich das Rate-Limit bei der Anmeldung.
+
+app.example.de {
+	encode zstd gzip
+
+	header {
+		# Browser sollen die Seite nur noch über HTTPS aufrufen (1 Jahr)
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	# Fotos sind höchstens 5 MB; etwas Puffer für Formulardaten
+	request_body {
+		max_size 10MB
+	}
+
+	reverse_proxy 127.0.0.1:3000
+}
