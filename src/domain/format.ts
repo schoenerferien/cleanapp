@@ -7,6 +7,13 @@ export const euro = (cents: number) => eur.format(cents / 100);
 export const decimal2 = (n: number) => num2.format(n);
 export const hoursLabel = (minutes: number) => `${num2.format(minutes / 60)} Std`;
 
+const num1 = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1 });
+export function bytesDe(bytes: number): string {
+  if (bytes < 1024 ** 2) return `${num1.format(bytes / 1024)} KB`;
+  if (bytes < 1024 ** 3) return `${num1.format(bytes / 1024 ** 2)} MB`;
+  return `${num1.format(bytes / 1024 ** 3)} GB`;
+}
+
 export function dateDe(iso: string): string {
   return `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`;
 }

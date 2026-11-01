@@ -15,7 +15,7 @@ export function invoicePdfFilename(inv: Pick<Invoice, "number">): string {
   return inv.number ? `Rechnung-${inv.number}.pdf` : "Rechnungsentwurf.pdf";
 }
 
-const frozenKey = (inv: Pick<Invoice, "id" | "tenantId">) => `${inv.tenantId}/rechnungen/${inv.id}.pdf`;
+export const frozenPdfKey = (inv: Pick<Invoice, "id" | "tenantId">) => `${inv.tenantId}/rechnungen/${inv.id}.pdf`;
 
 /**
  * PDF einer Rechnung. Entwürfe werden jedes Mal neu erzeugt. Finalisierte Rechnungen werden einmal erzeugt
@@ -24,10 +24,10 @@ const frozenKey = (inv: Pick<Invoice, "id" | "tenantId">) => `${inv.tenantId}/re
  */
 export async function invoicePdf(inv: Invoice): Promise<Uint8Array> {
   if (inv.status === "entwurf") return renderInvoicePdf(inv);
-  const frozen = await findFile(frozenKey(inv));
+  const frozen = await findFile(frozenPdfKey(inv));
   if (frozen) return new Uint8Array(frozen);
   const pdf = await renderInvoicePdf(inv);
-  await putFile(frozenKey(inv), pdf);
+  await putFile(frozenPdfKey(inv), pdf);
   return pdf;
 }
 

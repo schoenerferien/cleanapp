@@ -111,3 +111,12 @@ sudo systemctl restart cleaninghub
 Die Firma lädt jeden Monat im Dashboard das **Monatsarchiv** herunter (Arbeitszeiten als CSV, ausgestellte Rechnungen als PDF,
 `LIESMICH.txt` mit Prüfsummen) und bewahrt es selbst auf: Arbeitszeiten mindestens 2 Jahre (§ 17 MiLoG), Rechnungen 8 Jahre.
 Das Dashboard erinnert, bis das Archiv des Vormonats heruntergeladen wurde.
+
+## Datensicherung in der App
+
+Unter **Datensicherung** lädt die Firma jederzeit ein komplettes Backup als ZIP herunter: alle Tabellen der Firma als JSON,
+alle Fotos und alle ausgestellten Rechnungs-PDFs, dazu `backup.json` (Manifest), `PRUEFSUMMEN.sha256` und `LIESMICH.txt`
+mit der Anleitung zur Wiederherstellung. Passwörter, PINs und Sitzungen sind nicht enthalten.
+
+Das ZIP wird beim Herunterladen erzeugt und gestreamt – auf dem Server bleibt keine Kopie liegen, und der Speicherbedarf
+wächst nicht mit der Datenmenge. Die automatischen Server-Backups (oben) ersetzt das nicht.

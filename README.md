@@ -59,6 +59,9 @@ Die Hinweise beziehen sich nur auf den Einsatz – es gibt keine Bewertung von P
    Das PDF wird beim Finalisieren unverändert abgelegt – spätere Abrufe liefern genau das verschickte Dokument.
 7. **Monatsarchiv** (Dashboard-Erinnerung bzw. Arbeitszeiten → *Monatsarchiv*): ZIP mit Arbeitszeiten-CSV, den im Monat
    ausgestellten Rechnungs-PDFs und `LIESMICH.txt` mit Prüfsummen. Die Firma bewahrt es selbst auf – die App ist kein Archiv.
+8. **Datensicherung**: komplettes Backup als ZIP – alle Tabellen der Firma als JSON, alle Fotos, alle ausgestellten
+   Rechnungs-PDFs, dazu `backup.json`, `LIESMICH.txt` (mit Anleitung zur Wiederherstellung) und `PRUEFSUMMEN.sha256`.
+   Wird beim Herunterladen gestreamt (ZIP64, auch über 4 GB). Ohne Passwörter, PINs und Sitzungen.
 
 Standort: GPS wird nur beim Ein- und Ausstempeln erfasst, nicht bei Fotos.
 
@@ -78,9 +81,9 @@ Der Playwright-Test legt Screenshots unter `e2e/screenshots/` ab.
 
 ```
 src/
-  app/(backoffice)/   Büro: dashboard, einsaetze, kunden, mitarbeiter, zeiten, rechnungen, einstellungen
+  app/(backoffice)/   Büro: dashboard, einsaetze, kunden, mitarbeiter, zeiten, rechnungen, datensicherung, einstellungen
   app/ma/             Mitarbeiter-App (mobil)
-  app/api/            Auth, Foto-Upload/-Abruf, Rechnungs-PDF, CSV-Export, Monatsarchiv
+  app/api/            Auth, Foto-Upload/-Abruf, Rechnungs-PDF, CSV-Export, Monatsarchiv, Datensicherung
   domain/             reine Fachlogik mit Tests (wandert später nach packages/domain)
   server/             Session, Server Actions, Abfragen, Dateiablage
   ai/                 Mistral-Client und Fotoprüfung
@@ -93,10 +96,11 @@ deploy/               Betrieb mit HTTPS: Caddyfile, systemd-Dienst, Anleitung (B
 ## Betrieb
 
 Eine Instanz je Firma auf einem eigenen Server, HTTPS über Caddy: siehe [`deploy/BETRIEB.md`](deploy/BETRIEB.md).
-Backups sind dort noch nicht enthalten – vor echten Daten einrichten.
+Automatische Server-Backups sind dort noch nicht enthalten – vor echten Daten einrichten. Die Datensicherung in der App
+ersetzt sie nicht, weil sie davon abhängt, dass jemand regelmäßig herunterlädt.
 
 ## Bewusst nicht im POC
 
 Mandanten-Registrierung und Row-Level-Security (nur `tenant_id`-Spalten), Offline-Modus und native App,
 Zuschläge/Tarife/DATEV-Export, E-Rechnung (für Kleinunternehmer nicht Pflicht), Storno per Gutschrift,
-SEPA, Mahnwesen, Kundenportal, Mehrsprachigkeit, Backups. Siehe Gesamtplan.
+SEPA, Mahnwesen, Kundenportal, Mehrsprachigkeit, automatische Server-Backups. Siehe Gesamtplan.
