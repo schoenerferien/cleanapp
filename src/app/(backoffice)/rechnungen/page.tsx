@@ -18,8 +18,10 @@ const invoiceStatusStyle: Record<string, string> = {
   entwurf: "bg-slate-100 text-slate-700",
   final: "bg-amber-100 text-amber-800",
   bezahlt: "bg-emerald-100 text-emerald-800",
+  storniert: "bg-red-100 text-red-800",
+  storno: "bg-slate-100 text-slate-700",
 };
-const statusLabel: Record<string, string> = { entwurf: "Entwurf", final: "Offen", bezahlt: "Bezahlt" };
+const statusLabel: Record<string, string> = { entwurf: "Entwurf", final: "Offen", bezahlt: "Bezahlt", storniert: "Storniert", storno: "Storno" };
 
 export default async function InvoicesPage() {
   const me = await requireOwner();
@@ -84,22 +86,26 @@ export default async function InvoicesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map(({ inv, customerName }) => (
-                  <TableRow key={inv.id}>
-                    <TableCell>
-                      <Link href={`/rechnungen/${inv.id}`} className="font-medium hover:underline">
-                        {inv.number ?? "Entwurf"}
-                      </Link>
-                    </TableCell>
-                    <TableCell>{customerName}</TableCell>
-                    <TableCell>{monthLabel(inv.periodMonth)}</TableCell>
-                    <TableCell>{inv.invoiceDate ? dateDe(inv.invoiceDate) : "–"}</TableCell>
-                    <TableCell className="text-right tabular-nums">{euro(inv.totalCents)}</TableCell>
-                    <TableCell>
-                      <Badge className={`border-transparent ${invoiceStatusStyle[inv.status]}`}>{statusLabel[inv.status]}</Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {rows.map(({ inv, customerName }) => {
+                  // Stornorechnungen sind keine Forderung – Status „Storno“ statt „Offen“
+                  const status = inv.kind === "storno" ? "storno" : inv.status;
+                  return (
+                    <TableRow key={inv.id} className={inv.status === "storniert" ? "text-muted-foreground" : ""}>
+                      <TableCell>
+                        <Link href={`/rechnungen/${inv.id}`} className="font-medium hover:underline">
+                          {inv.number ?? "Entwurf"}
+                        </Link>
+                      </TableCell>
+                      <TableCell>{customerName}</TableCell>
+                      <TableCell>{monthLabel(inv.periodMonth)}</TableCell>
+                      <TableCell>{inv.invoiceDate ? dateDe(inv.invoiceDate) : "–"}</TableCell>
+                      <TableCell className="text-right tabular-nums">{euro(inv.totalCents)}</TableCell>
+                      <TableCell>
+                        <Badge className={`border-transparent ${invoiceStatusStyle[status]}`}>{statusLabel[status]}</Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}

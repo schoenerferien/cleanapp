@@ -74,6 +74,17 @@ exit
 
 `npm run db:seed` **nicht** auf dem Server ausführen – es leert alle Tabellen (bricht ab, sobald eine echte Firma existiert).
 
+Bei der ersten Anmeldung richtet das Büro die **Zwei-Faktor-Anmeldung** ein (Authenticator-App, im Betrieb Pflicht) und
+sichert die Notfall-Codes. Danach unter *Konto und Sicherheit* ein eigenes Passwort setzen (mind. 12 Zeichen).
+
+**Notfall** (Passwort vergessen oder Handy verloren und keine Notfall-Codes): auf dem Server
+
+```bash
+sudo -iu cleaninghub
+cd /opt/cleaninghub/repo/poc
+npm run zugang:zuruecksetzen -- login@firma.de   # neues Startpasswort, Zwei-Faktor beim nächsten Login neu einrichten
+```
+
 ## 5. Dienst und HTTPS starten
 
 ```bash
@@ -120,3 +131,13 @@ mit der Anleitung zur Wiederherstellung. Passwörter, PINs und Sitzungen sind ni
 
 Das ZIP wird beim Herunterladen erzeugt und gestreamt – auf dem Server bleibt keine Kopie liegen, und der Speicherbedarf
 wächst nicht mit der Datenmenge. Die automatischen Server-Backups (oben) ersetzt das nicht.
+
+## Datenschutz und Löschfristen
+
+Unter **Datenschutz** stehen die Löschfristen (Standard: Arbeitszeiten 24 Monate – Minimum nach § 17 MiLoG –,
+GPS-Standorte 3 Monate, Fotos 24 Monate). Ist etwas fällig, erinnert das Dashboard; gelöscht wird erst nach Bestätigung
+mit *Jetzt löschen*. Die Fristen vor echten Daten mit Steuerberatung und Datenschutzberatung abstimmen – für Lohnunterlagen
+können längere Fristen gelten.
+
+Rechnungen samt Empfängerdaten und das Protokoll werden nicht gelöscht (Aufbewahrungspflicht, GoBD). Ehemalige Kunden und
+ausgeschiedene Mitarbeitende lassen sich auf ihrer Seite anonymisieren.

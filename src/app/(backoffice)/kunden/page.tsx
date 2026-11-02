@@ -1,4 +1,4 @@
-import { asc, count, eq } from "drizzle-orm";
+import { and, asc, count, eq, isNull } from "drizzle-orm";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { EmptyState, Field, PageHeader } from "@/components/bits";
@@ -17,7 +17,7 @@ export default async function CustomersPage() {
     .select({ id: customers.id, name: customers.name, city: customers.city, contactName: customers.contactName, siteCount: count(sites.id) })
     .from(customers)
     .leftJoin(sites, eq(sites.customerId, customers.id))
-    .where(eq(customers.tenantId, me.tenantId))
+    .where(and(eq(customers.tenantId, me.tenantId), isNull(customers.anonymizedAt)))
     .groupBy(customers.id)
     .orderBy(asc(customers.name));
   const siteRegions = await db

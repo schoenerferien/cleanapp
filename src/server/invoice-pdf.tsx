@@ -11,8 +11,9 @@ type Invoice = typeof schema.invoices.$inferSelect;
 
 const MAX_PROOF_PHOTOS = 40;
 
-export function invoicePdfFilename(inv: Pick<Invoice, "number">): string {
-  return inv.number ? `Rechnung-${inv.number}.pdf` : "Rechnungsentwurf.pdf";
+export function invoicePdfFilename(inv: Pick<Invoice, "number" | "kind">): string {
+  if (!inv.number) return "Rechnungsentwurf.pdf";
+  return inv.kind === "storno" ? `Stornorechnung-${inv.number}.pdf` : `Rechnung-${inv.number}.pdf`;
 }
 
 export const frozenPdfKey = (inv: Pick<Invoice, "id" | "tenantId">) => `${inv.tenantId}/rechnungen/${inv.id}.pdf`;
@@ -41,7 +42,7 @@ export async function freezeInvoicePdf(invoiceId: string, tenantId: string): Pro
 }
 
 async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
-  const { invoiceLines, tenants, customers, jobs, sites, timeEntries, photos, user } = schema;
+  const { invoices, invoiceLines, tenants, customers, jobs, sites, timeEntries, photos, user } = schema;
   const id = inv.id;
 
   // Entwürfe zeigen aktuelle Stammdaten, finalisierte Rechnungen den eingefrorenen Stand
@@ -54,7 +55,7 @@ async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
     customerSnap = c;
   }
 
-  const [lines, billedJobs] = await Promise.all([
+  const [lines, billedJobs, [cancelled]] = await Promise.all([
     db.select().from(invoiceLines).where(eq(invoiceLines.invoiceId, id)).orderBy(asc(invoiceLines.position)),
     db
       .select({ id: jobs.id, date: jobs.date, title: jobs.title, siteName: sites.name })
@@ -62,6 +63,9 @@ async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
       .innerJoin(sites, eq(sites.id, jobs.siteId))
       .where(eq(jobs.invoiceId, id))
       .orderBy(asc(jobs.date), asc(jobs.plannedStart)),
+    inv.cancelsInvoiceId
+      ? db.select({ number: invoices.number, invoiceDate: invoices.invoiceDate }).from(invoices).where(eq(invoices.id, inv.cancelsInvoiceId))
+      : [],
   ]);
   const jobIds = billedJobs.map((j) => j.id);
   const [entries, jobPhotos] = jobIds.length
@@ -106,6 +110,7 @@ async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
   const data: InvoicePdfData = {
     draft: inv.status === "entwurf",
     number: inv.number,
+    cancels: cancelled?.number && cancelled.invoiceDate ? { number: cancelled.number, invoiceDate: cancelled.invoiceDate } : null,
     invoiceDate,
     dueDate: addDays(invoiceDate, 14),
     periodFrom: from,

@@ -1,5 +1,5 @@
-import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
-import { Archive, ChevronRight, Download, Sparkles } from "lucide-react";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { Archive, ChevronRight, Download, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { aiEnabled } from "@/ai/mistral";
 import { AmpelBadge, AmpelBar, EmptyState, PageHeader, StatusBadge } from "@/components/bits";
@@ -13,6 +13,7 @@ import { dateDe, euro, hoursLabel, timeDe } from "@/domain/format";
 import { haversineMeters, monthOf, shiftMonth, todayBerlin } from "@/domain/time";
 import { kuStatus } from "@/domain/limits";
 import { archivedMonths } from "@/server/month-archive";
+import { retentionDue } from "@/server/privacy";
 import { employeeMonthStats, listJobs, revenueInYear } from "@/server/queries";
 import { requireOwner } from "@/server/session";
 
@@ -23,7 +24,7 @@ export default async function DashboardPage() {
   const { jobs, sites, timeEntries, user, tenants, invoices } = schema;
 
   const lastMonth = shiftMonth(month, -1);
-  const [todayJobs, clockedIn, toReview, stats, revenue, [tenant], [openInvoices], archived] = await Promise.all([
+  const [todayJobs, clockedIn, toReview, stats, revenue, [tenant], [openInvoices], archived, due] = await Promise.all([
     listJobs(me.tenantId, { from: today, to: today }),
     db
       .select({
@@ -65,8 +66,9 @@ export default async function DashboardPage() {
     db
       .select({ n: sql<number>`count(*)::int`, sum: sql<number>`coalesce(sum(${invoices.totalCents}), 0)::int` })
       .from(invoices)
-      .where(and(eq(invoices.tenantId, me.tenantId), inArray(invoices.status, ["final"]))),
+      .where(and(eq(invoices.tenantId, me.tenantId), eq(invoices.kind, "rechnung"), eq(invoices.status, "final"))),
     archivedMonths(me.tenantId),
+    retentionDue(me.tenantId, today),
   ]);
   const ku = kuStatus(revenue, tenant.kuLimitCents);
   const ai = aiEnabled();
@@ -102,6 +104,21 @@ export default async function DashboardPage() {
               <a href={`/api/exports/monatsarchiv?m=${lastMonth}`}>
                 <Download /> Herunterladen
               </a>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {due.total > 0 && (
+        <Card className="mb-6 border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40">
+          <CardContent className="flex flex-wrap items-center gap-4">
+            <ShieldCheck className="size-6 shrink-0 text-amber-700" />
+            <div className="min-w-0 flex-1 text-sm">
+              <p className="font-medium">Löschfristen erreicht: {due.total} Datensätze</p>
+              <p className="text-muted-foreground">Arbeitszeiten, GPS-Standorte oder Fotos sind älter als die eingestellten Fristen und sollten gelöscht werden.</p>
+            </div>
+            <Button asChild variant="outline">
+              <Link href="/datenschutz">Ansehen</Link>
             </Button>
           </CardContent>
         </Card>

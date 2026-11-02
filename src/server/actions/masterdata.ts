@@ -11,7 +11,7 @@ import { euroToCents, int, lines, optFloat, optStr, str } from "@/server/form";
 import { geocode } from "@/server/geocode";
 import { requireOwner } from "@/server/session";
 
-const { tenants, customers, sites, user, account } = schema;
+const { tenants, customers, sites, user, account, session } = schema;
 
 // ---------- Firma ----------
 
@@ -188,6 +188,8 @@ export async function updateEmployee(id: string, fd: FormData) {
       .where(and(eq(user.id, id), eq(user.tenantId, me.tenantId), eq(user.role, "employee")))
       .returning({ id: user.id });
     if (!employee) throw new Error("Mitarbeiter nicht gefunden");
+    // Deaktiviert: sofort auf allen Geräten abmelden
+    if (fd.get("active") !== "on") await tx.delete(session).where(eq(session.userId, employee.id));
 
     if (passwordHash) {
       await tx

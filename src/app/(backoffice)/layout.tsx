@@ -1,8 +1,9 @@
-import { Sparkles } from "lucide-react";
+import { KeyRound, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { AppNav } from "@/components/app-nav";
 import { LogoutButton } from "@/components/client-bits";
+import { Button } from "@/components/ui/button";
 import { db, schema } from "@/db";
 import { requireOwner } from "@/server/session";
 
@@ -23,13 +24,23 @@ export default async function BackofficeLayout({ children }: { children: React.R
               <span className="block text-xs text-muted-foreground">{tenant?.name}</span>
             </span>
           </Link>
-          <LogoutButton className="md:hidden" />
+          <div className="flex items-center gap-1 md:hidden">
+            <Button variant="ghost" size="icon-sm" asChild>
+              <Link href="/konto" aria-label="Konto und Sicherheit">
+                <KeyRound />
+              </Link>
+            </Button>
+            <LogoutButton />
+          </div>
         </div>
         <div className="px-3 pb-3 md:px-3">
           <AppNav />
         </div>
         <div className="hidden px-4 md:absolute md:bottom-4 md:block">
-          <p className="mb-1 text-xs text-muted-foreground">{me.name}</p>
+          <p className="text-xs text-muted-foreground">{me.name}</p>
+          <Link href="/konto" className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:underline">
+            <KeyRound className="size-3.5" /> Konto und Sicherheit
+          </Link>
           <LogoutButton className="-ml-2" />
         </div>
       </aside>

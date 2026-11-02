@@ -6,6 +6,8 @@ import { dateDe, decimal2, euro } from "@/domain/format";
 export type InvoicePdfData = {
   draft: boolean;
   number: string | null;
+  /** Stornorechnung: Nummer und Datum der stornierten Rechnung */
+  cancels: { number: string; invoiceDate: string } | null;
   invoiceDate: string; // ISO
   dueDate: string; // ISO
   periodFrom: string;
@@ -84,8 +86,9 @@ function Footer({ t }: { t: TenantSnapshot }) {
 export function InvoiceDocument({ d }: { d: InvoicePdfData }) {
   const t = d.tenant;
   const c = d.customer;
+  const title = d.cancels ? "Stornorechnung" : "Rechnung";
   return (
-    <Document title={d.number ? `Rechnung ${d.number}` : "Rechnungsentwurf"} author={t.name} language="de">
+    <Document title={d.number ? `${title} ${d.number}` : "Rechnungsentwurf"} author={t.name} language="de">
       <Page size="A4" style={s.page}>
         {d.draft && <Text style={s.watermark} fixed>ENTWURF</Text>}
         <View style={s.between}>
@@ -107,6 +110,14 @@ export function InvoiceDocument({ d }: { d: InvoicePdfData }) {
                 <Text style={s.metaLabel}>Rechnungsdatum</Text>
                 <Text>{dateDe(d.invoiceDate)}</Text>
               </View>
+              {d.cancels && (
+                <View style={s.row}>
+                  <Text style={s.metaLabel}>Storno zu</Text>
+                  <Text>
+                    {d.cancels.number} vom {dateDe(d.cancels.invoiceDate)}
+                  </Text>
+                </View>
+              )}
               <View style={s.row}>
                 <Text style={s.metaLabel}>Leistungszeitraum</Text>
                 <Text>
@@ -121,11 +132,18 @@ export function InvoiceDocument({ d }: { d: InvoicePdfData }) {
           </View>
         </View>
 
-        <Text style={s.h1}>Rechnung</Text>
-        <Text>
-          Für die Reinigungsleistungen im {monthLabel(d.periodMonth)} berechnen wir Ihnen wie folgt. Den Leistungsnachweis mit Zeiten und Fotos finden Sie im
-          Anhang.
-        </Text>
+        <Text style={s.h1}>{title}</Text>
+        {d.cancels ? (
+          <Text>
+            Hiermit stornieren wir unsere Rechnung Nr. {d.cancels.number} vom {dateDe(d.cancels.invoiceDate)} über die Reinigungsleistungen im{" "}
+            {monthLabel(d.periodMonth)} vollständig.
+          </Text>
+        ) : (
+          <Text>
+            Für die Reinigungsleistungen im {monthLabel(d.periodMonth)} berechnen wir Ihnen wie folgt. Den Leistungsnachweis mit Zeiten und Fotos finden Sie
+            im Anhang.
+          </Text>
+        )}
 
         <View style={s.th}>
           <Text style={s.cPos}>Pos.</Text>
@@ -167,10 +185,16 @@ export function InvoiceDocument({ d }: { d: InvoicePdfData }) {
 
         <View style={{ marginTop: 18, gap: 4 }} wrap={false}>
           {d.kleinunternehmer && <Text>{KU_HINWEIS}</Text>}
-          <Text>
-            Bitte überweisen Sie den Gesamtbetrag bis zum {dateDe(d.dueDate)} unter Angabe der Rechnungsnummer auf das unten genannte Konto.
-          </Text>
-          <Text style={s.muted}>Vielen Dank für Ihren Auftrag!</Text>
+          {d.cancels ? (
+            <Text>Die Rechnung Nr. {d.cancels.number} ist damit gegenstandslos. Einen bereits gezahlten Betrag erstatten oder verrechnen wir.</Text>
+          ) : (
+            <>
+              <Text>
+                Bitte überweisen Sie den Gesamtbetrag bis zum {dateDe(d.dueDate)} unter Angabe der Rechnungsnummer auf das unten genannte Konto.
+              </Text>
+              <Text style={s.muted}>Vielen Dank für Ihren Auftrag!</Text>
+            </>
+          )}
         </View>
         <Footer t={t} />
       </Page>

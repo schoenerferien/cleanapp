@@ -3,15 +3,17 @@ import { MapPin, Pencil } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EmptyState, Field, PageHeader } from "@/components/bits";
-import { SubmitButton } from "@/components/client-bits";
+import { ConfirmForm, SubmitButton } from "@/components/client-bits";
 import { SiteForm } from "@/components/site-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { db, schema } from "@/db";
-import { billingModelLabel, euro } from "@/domain/format";
+import { billingModelLabel, dateTimeDe, euro } from "@/domain/format";
 import { createSite, updateCustomer } from "@/server/actions/masterdata";
+import { anonymizeCustomer } from "@/server/actions/privacy";
+import { customerPrivacy } from "@/server/privacy";
 import { requireOwner } from "@/server/session";
 
 export default async function CustomerPage({ params }: { params: Promise<{ id: string }> }) {
@@ -22,11 +24,14 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
     .from(schema.customers)
     .where(and(eq(schema.customers.id, id), eq(schema.customers.tenantId, me.tenantId)));
   if (!c) notFound();
-  const sites = await db.select().from(schema.sites).where(eq(schema.sites.customerId, id)).orderBy(asc(schema.sites.name));
+  const [sites, privacy] = await Promise.all([
+    db.select().from(schema.sites).where(eq(schema.sites.customerId, id)).orderBy(asc(schema.sites.name)),
+    customerPrivacy(me.tenantId, id),
+  ]);
 
   return (
     <>
-      <PageHeader title={c.name} description={[c.contactName, c.email].filter(Boolean).join(" · ")}>
+      <PageHeader title={c.name} description={c.anonymizedAt ? `Anonymisiert am ${dateTimeDe(c.anonymizedAt)}` : [c.contactName, c.email].filter(Boolean).join(" · ")}>
         <Button variant="outline" asChild>
           <Link href="/kunden">Zurück</Link>
         </Button>
@@ -76,39 +81,68 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
           </Card>
         </div>
 
-        <Card className="h-fit">
-          <CardHeader>
-            <CardTitle>Kundendaten</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form action={updateCustomer.bind(null, c.id)} className="space-y-3">
-              <Field label="Name / Firma">
-                <Input name="name" defaultValue={c.name} required />
-              </Field>
-              <Field label="Ansprechpartner">
-                <Input name="contactName" defaultValue={c.contactName ?? ""} />
-              </Field>
-              <Field label="E-Mail">
-                <Input name="email" type="email" defaultValue={c.email ?? ""} />
-              </Field>
-              <Field label="Telefon">
-                <Input name="phone" defaultValue={c.phone ?? ""} />
-              </Field>
-              <Field label="Straße und Nr.">
-                <Input name="street" defaultValue={c.street ?? ""} />
-              </Field>
-              <div className="grid grid-cols-[100px_1fr] gap-2">
-                <Field label="PLZ">
-                  <Input name="zip" defaultValue={c.zip ?? ""} />
+        <div className="space-y-6">
+          <Card className="h-fit">
+            <CardHeader>
+              <CardTitle>Kundendaten</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form action={updateCustomer.bind(null, c.id)} className="space-y-3">
+                <Field label="Name / Firma">
+                  <Input name="name" defaultValue={c.name} required />
                 </Field>
-                <Field label="Ort">
-                  <Input name="city" defaultValue={c.city ?? ""} />
+                <Field label="Ansprechpartner">
+                  <Input name="contactName" defaultValue={c.contactName ?? ""} />
                 </Field>
-              </div>
-              <SubmitButton className="w-full">Speichern</SubmitButton>
-            </form>
-          </CardContent>
-        </Card>
+                <Field label="E-Mail">
+                  <Input name="email" type="email" defaultValue={c.email ?? ""} />
+                </Field>
+                <Field label="Telefon">
+                  <Input name="phone" defaultValue={c.phone ?? ""} />
+                </Field>
+                <Field label="Straße und Nr.">
+                  <Input name="street" defaultValue={c.street ?? ""} />
+                </Field>
+                <div className="grid grid-cols-[100px_1fr] gap-2">
+                  <Field label="PLZ">
+                    <Input name="zip" defaultValue={c.zip ?? ""} />
+                  </Field>
+                  <Field label="Ort">
+                    <Input name="city" defaultValue={c.city ?? ""} />
+                  </Field>
+                </div>
+                <SubmitButton className="w-full">Speichern</SubmitButton>
+              </form>
+            </CardContent>
+          </Card>
+
+          {privacy && !privacy.anonymizedAt && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Datenschutz</CardTitle>
+                <CardDescription>
+                  Ehemaliger Kunde? Beim Anonymisieren werden Kontaktdaten, Objektadressen, Arbeitsanweisungen, Notizen, Fotos und die Standorte beim
+                  Stempeln gelöscht. Rechnungen bleiben unverändert (Aufbewahrungspflicht).
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                {privacy.blockers.length > 0 && <p className="text-muted-foreground">Noch nicht möglich: {privacy.blockers.join(", ")}.</p>}
+                {privacy.canAnonymize && (
+                  <>
+                    {privacy.unbilledJobs > 0 && (
+                      <p className="text-amber-700">{privacy.unbilledJobs} abgenommene Einsätze sind noch nicht abgerechnet.</p>
+                    )}
+                    <ConfirmForm action={anonymizeCustomer.bind(null, c.id)} message={`${c.name} endgültig anonymisieren? Das lässt sich nicht rückgängig machen.`}>
+                      <SubmitButton variant="destructive" className="w-full" pendingText="Anonymisiere …">
+                        Kunden anonymisieren
+                      </SubmitButton>
+                    </ConfirmForm>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
     </>
   );

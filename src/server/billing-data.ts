@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, gte, inArray, isNull, lte } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, lte, ne } from "drizzle-orm";
 import { db, schema, type Tx } from "@/db";
 import { buildInvoiceLines, type BillingJob } from "@/domain/billing";
 import { effectiveMinutes, monthRange } from "@/domain/time";
@@ -29,12 +29,21 @@ export async function computeInvoice(tenantId: string, customerId: string, month
     minutes: entries.filter((e) => e.jobId === j.id).reduce((s, e) => s + effectiveMinutes(e), 0),
   }));
 
-  // Pauschalen, die für diesen Monat schon auf einer Rechnung stehen
+  // Pauschalen, die für diesen Monat schon auf einer gültigen Rechnung oder einem Entwurf stehen (Storniertes zählt nicht)
   const flat = await tx
     .select({ siteId: invoiceLines.siteId })
     .from(invoiceLines)
     .innerJoin(invoices, eq(invoices.id, invoiceLines.invoiceId))
-    .where(and(inArray(invoiceLines.siteId, siteIds), eq(invoiceLines.unit, "Monat"), eq(invoices.periodMonth, month), eq(invoices.tenantId, tenantId)));
+    .where(
+      and(
+        inArray(invoiceLines.siteId, siteIds),
+        eq(invoiceLines.unit, "Monat"),
+        eq(invoices.periodMonth, month),
+        eq(invoices.tenantId, tenantId),
+        eq(invoices.kind, "rechnung"),
+        ne(invoices.status, "storniert"),
+      ),
+    );
 
   return {
     ...buildInvoiceLines({

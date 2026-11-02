@@ -8,15 +8,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
+import { authErrorText, restartsSignIn } from "@/lib/auth-errors";
 
 export default function LoginPage() {
   const router = useRouter();
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
+  // Zweiter Schritt (Büro): Code aus der Authenticator-App oder ein Notfall-Code
+  const [step, setStep] = useState<"password" | "code">("password");
+  const [recovery, setRecovery] = useState(false);
+  const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function submit(e: React.FormEvent) {
+  function done() {
+    router.replace("/");
+    router.refresh();
+  }
+
+  async function submitPassword(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
@@ -25,12 +35,31 @@ export default function LoginPage() {
       ? await authClient.signIn.email({ email: id, password })
       : await authClient.signIn.username({ username: id, password });
     setBusy(false);
-    if (res.error) {
-      setError("Anmeldung fehlgeschlagen. Bitte Benutzername und PIN bzw. Passwort prüfen.");
+    if (res.error) return setError(authErrorText(res.error));
+    if (res.data && "twoFactorRedirect" in res.data && res.data.twoFactorRedirect) {
+      setPassword("");
+      setStep("code");
       return;
     }
-    router.replace("/");
-    router.refresh();
+    done();
+  }
+
+  async function submitCode(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    const value = code.replace(/\s/g, "");
+    const res = recovery ? await authClient.twoFactor.verifyBackupCode({ code: value }) : await authClient.twoFactor.verifyTotp({ code: value });
+    setBusy(false);
+    if (res.error) {
+      setError(authErrorText(res.error));
+      if (restartsSignIn(res.error.code)) {
+        setStep("password");
+        setCode("");
+      }
+      return;
+    }
+    done();
   }
 
   return (
@@ -41,39 +70,75 @@ export default function LoginPage() {
             <Sparkles className="size-5" />
           </div>
           <CardTitle className="text-xl">CleaningHub</CardTitle>
-          <CardDescription>Büro: E-Mail und Passwort · Team: Benutzername und PIN</CardDescription>
+          <CardDescription>
+            {step === "password" ? "Büro: E-Mail und Passwort · Team: Benutzername und PIN" : "Zweiter Schritt: Bestätigung mit dem Handy"}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={submit} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="login">E-Mail oder Benutzername</Label>
-              <Input
-                id="login"
-                autoComplete="username"
-                autoCapitalize="none"
-                className="h-11 text-base"
-                value={login}
-                onChange={(e) => setLogin(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Passwort oder PIN</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                className="h-11 text-base"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="h-11 w-full text-base" disabled={busy}>
-              {busy ? "Anmelden …" : "Anmelden"}
-            </Button>
-          </form>
+          {step === "password" ? (
+            <form onSubmit={submitPassword} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="login">E-Mail oder Benutzername</Label>
+                <Input
+                  id="login"
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  className="h-11 text-base"
+                  value={login}
+                  onChange={(e) => setLogin(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="password">Passwort oder PIN</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  autoComplete="current-password"
+                  className="h-11 text-base"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              <Button type="submit" className="h-11 w-full text-base" disabled={busy}>
+                {busy ? "Anmelden …" : "Anmelden"}
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={submitCode} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="code">{recovery ? "Notfall-Code" : "6-stelliger Code aus der Authenticator-App"}</Label>
+                <Input
+                  id="code"
+                  inputMode={recovery ? "text" : "numeric"}
+                  autoComplete="one-time-code"
+                  autoCapitalize="none"
+                  autoFocus
+                  className="h-11 font-mono text-base tracking-widest"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  required
+                />
+              </div>
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              <Button type="submit" className="h-11 w-full text-base" disabled={busy}>
+                {busy ? "Prüfe …" : "Bestätigen"}
+              </Button>
+              <button
+                type="button"
+                className="w-full text-sm text-muted-foreground underline"
+                onClick={() => {
+                  setRecovery(!recovery);
+                  setCode("");
+                  setError(null);
+                }}
+              >
+                {recovery ? "Doch den Code aus der App verwenden" : "Handy nicht zur Hand? Notfall-Code verwenden"}
+              </button>
+            </form>
+          )}
         </CardContent>
       </Card>
     </main>

@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Clock, DatabaseBackup, FileText, LayoutDashboard, Settings, Users, Building2 } from "lucide-react";
+import { CalendarDays, Clock, DatabaseBackup, FileText, LayoutDashboard, Settings, ShieldCheck, Users, Building2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ const items = [
   { href: "/zeiten", label: "Arbeitszeiten", icon: Clock },
   { href: "/rechnungen", label: "Rechnungen", icon: FileText },
   { href: "/datensicherung", label: "Datensicherung", icon: DatabaseBackup },
+  { href: "/datenschutz", label: "Datenschutz", icon: ShieldCheck },
   { href: "/einstellungen", label: "Einstellungen", icon: Settings },
 ];
 

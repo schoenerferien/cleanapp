@@ -28,6 +28,10 @@ npm run dev                     # Terminal 2: http://localhost:3000
 | Bogdan (Minijob) | `bogdan` | `222222` |
 | Celine (Teilzeit) | `celine` | `333333` |
 
+Das Büro-Konto braucht im Betrieb (`NODE_ENV=production`) eine Zwei-Faktor-Anmeldung per Authenticator-App; lokal mit
+`npm run dev` ist sie freiwillig. Büro-Sitzungen enden nach 12 Stunden; nach 10 falschen Passwörtern bzw. PINs ist ein
+Konto 15 Minuten gesperrt.
+
 ## Am Handy testen
 
 Kamera und GPS funktionieren im Browser nur über HTTPS. Am einfachsten über einen Cloudflare-Quick-Tunnel:
@@ -57,11 +61,18 @@ Die Hinweise beziehen sich nur auf den Einsatz – es gibt keine Bewertung von P
 5. **Arbeitszeiten**: Monatsübersicht mit Minijob-Prognose, CSV-Export (Beginn/Ende/Dauer, Korrekturen mit Original).
 6. **Rechnungen** → Neue Rechnung: Kunde + Monat → Vorschau → Entwurf → *Finalisieren* (fortlaufende Nummer, danach gesperrt) → PDF mit Leistungsnachweis.
    Das PDF wird beim Finalisieren unverändert abgelegt – spätere Abrufe liefern genau das verschickte Dokument.
+   Korrektur nur per *Stornieren*: Stornorechnung mit eigener Nummer und negativen Beträgen, die Rechnung bleibt unverändert
+   (Status „storniert“), die Einsätze werden frei – auf Wunsch gleich als korrigierbarer Entwurf mit den bisherigen Positionen.
 7. **Monatsarchiv** (Dashboard-Erinnerung bzw. Arbeitszeiten → *Monatsarchiv*): ZIP mit Arbeitszeiten-CSV, den im Monat
    ausgestellten Rechnungs-PDFs und `LIESMICH.txt` mit Prüfsummen. Die Firma bewahrt es selbst auf – die App ist kein Archiv.
 8. **Datensicherung**: komplettes Backup als ZIP – alle Tabellen der Firma als JSON, alle Fotos, alle ausgestellten
    Rechnungs-PDFs, dazu `backup.json`, `LIESMICH.txt` (mit Anleitung zur Wiederherstellung) und `PRUEFSUMMEN.sha256`.
-   Wird beim Herunterladen gestreamt (ZIP64, auch über 4 GB). Ohne Passwörter, PINs und Sitzungen.
+   Wird beim Herunterladen gestreamt (ZIP64, auch über 4 GB). Ohne Passwörter, PINs, Zwei-Faktor-Schlüssel und Sitzungen.
+9. **Datenschutz**: Löschfristen (Arbeitszeiten mind. 24 Monate, GPS-Standorte, Fotos) mit Vorschau und *Jetzt löschen*,
+   Erinnerung im Dashboard. Ehemalige Kunden (ohne offene Rechnungen/Einsätze) und ausgeschiedene Mitarbeitende (nach Ablauf
+   der Aufbewahrungsfrist ihrer Arbeitszeiten) lassen sich anonymisieren. Rechnungen und Protokoll bleiben unverändert.
+10. **Konto und Sicherheit** (Sidebar unten): Zwei-Faktor-Anmeldung mit QR-Code und Notfall-Codes, Passwort ändern
+    (mind. 12 Zeichen), alle anderen Geräte abmelden.
 
 Standort: GPS wird nur beim Ein- und Ausstempeln erfasst, nicht bei Fotos.
 
@@ -102,5 +113,6 @@ ersetzt sie nicht, weil sie davon abhängt, dass jemand regelmäßig herunterlä
 ## Bewusst nicht im POC
 
 Mandanten-Registrierung und Row-Level-Security (nur `tenant_id`-Spalten), Offline-Modus und native App,
-Zuschläge/Tarife/DATEV-Export, E-Rechnung (für Kleinunternehmer nicht Pflicht), Storno per Gutschrift,
-SEPA, Mahnwesen, Kundenportal, Mehrsprachigkeit, automatische Server-Backups. Siehe Gesamtplan.
+Zuschläge/Tarife/DATEV-Export, E-Rechnung (für Kleinunternehmer nicht Pflicht), Teilstorno/Rechnungskorrektur einzelner
+Positionen, Löschen von Rechnungen nach Ablauf der Aufbewahrungsfrist, SEPA, Mahnwesen, Kundenportal, Mehrsprachigkeit,
+automatische Server-Backups. Siehe Gesamtplan.

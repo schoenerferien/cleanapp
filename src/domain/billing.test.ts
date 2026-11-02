@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { buildInvoiceLines, formatInvoiceNumber, hoursFromMinutes, lineTotal, type BillingJob, type BillingSite } from "./billing";
+import {
+  buildInvoiceLines,
+  canCancel,
+  formatInvoiceNumber,
+  hoursFromMinutes,
+  isOpen,
+  lineTotal,
+  stornoLines,
+  stornoTotals,
+  totals,
+  type BillingJob,
+  type BillingSite,
+} from "./billing";
 
 const sites: BillingSite[] = [
   { id: "praxis", name: "Praxis Dr. Meier", billingModel: "hourly", rateCents: 3200 },
@@ -84,5 +96,41 @@ describe("Hilfsfunktionen", () => {
   });
   it("Rechnungsnummer", () => {
     expect(formatInvoiceNumber("RE", 2026, 1)).toBe("RE-2026-0001");
+  });
+});
+
+describe("Storno", () => {
+  const original = buildInvoiceLines({ sites, jobs, month: "2026-10", flatBilledSiteIds: new Set(), kleinunternehmer: false });
+
+  it("spiegelt alle Positionen und Beträge, sodass Rechnung + Storno 0 ergibt", () => {
+    const lines = stornoLines(original.lines);
+    expect(lines.map((l) => l.description)).toEqual(original.lines.map((l) => l.description));
+    expect(lines.every((l, i) => l.quantity === -original.lines[i].quantity && l.totalCents === -original.lines[i].totalCents)).toBe(true);
+    expect(lines.every((l, i) => l.unitPriceCents === original.lines[i].unitPriceCents)).toBe(true);
+
+    const storno = stornoTotals(original);
+    expect(storno).toEqual(totals(lines, false));
+    expect(storno.totalCents + original.totalCents).toBe(0);
+    expect(storno.vatCents + original.vatCents).toBe(0);
+  });
+
+  it("macht aus 0 keine -0", () => {
+    const [line] = stornoLines([{ quantity: 0, totalCents: 0 }]);
+    expect(Object.is(line.totalCents, 0) && Object.is(line.quantity, 0)).toBe(true);
+    expect(Object.is(stornoTotals({ netCents: 0, vatCents: 0, totalCents: 0 }).vatCents, 0)).toBe(true);
+  });
+
+  it("storniert nur ausgestellte Rechnungen, nicht Entwürfe, Stornos oder bereits Storniertes", () => {
+    expect(canCancel({ kind: "rechnung", status: "final" })).toBe(true);
+    expect(canCancel({ kind: "rechnung", status: "bezahlt" })).toBe(true);
+    expect(canCancel({ kind: "rechnung", status: "entwurf" })).toBe(false);
+    expect(canCancel({ kind: "rechnung", status: "storniert" })).toBe(false);
+    expect(canCancel({ kind: "storno", status: "final" })).toBe(false);
+  });
+
+  it("zählt Stornorechnungen nicht als offene Forderung", () => {
+    expect(isOpen({ kind: "rechnung", status: "final" })).toBe(true);
+    expect(isOpen({ kind: "storno", status: "final" })).toBe(false);
+    expect(isOpen({ kind: "rechnung", status: "storniert" })).toBe(false);
   });
 });

@@ -1,12 +1,12 @@
 import { monthOf, shiftMonth, todayBerlin } from "@/domain/time";
 import { audit } from "@/server/audit";
 import { ARCHIVE_ENTITY, buildMonthArchive } from "@/server/month-archive";
-import { getCurrentUser } from "@/server/session";
+import { getCurrentUser, isOwner } from "@/server/session";
 
 // Monatsarchiv als ZIP: Arbeitszeiten (CSV) + im Monat ausgestellte Rechnungen (PDF, unverändert) + LIESMICH.
 export async function GET(request: Request) {
   const me = await getCurrentUser();
-  if (!me || me.role !== "owner") return new Response("Nicht erlaubt", { status: 403 });
+  if (!isOwner(me)) return new Response("Nicht erlaubt", { status: 403 });
   const m = new URL(request.url).searchParams.get("m");
   const month = m && /^\d{4}-\d{2}$/.test(m) ? m : shiftMonth(monthOf(todayBerlin()), -1);
 

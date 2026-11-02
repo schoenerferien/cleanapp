@@ -10,6 +10,7 @@ import { db, schema } from "@/db";
 import { haversineMeters } from "@/domain/time";
 import { audit } from "@/server/audit";
 import { requireUser } from "@/server/session";
+import { deleteFiles } from "@/server/storage";
 
 const { jobs, jobAssignments, sites, timeEntries, photos } = schema;
 
@@ -136,7 +137,7 @@ export async function finishJob(jobId: string, pos: Position): Promise<FieldResu
 export async function deletePhoto(photoId: string): Promise<FieldResult> {
   const me = await requireUser();
   const [p] = await db
-    .select({ id: photos.id, jobId: photos.jobId, status: jobs.status })
+    .select({ id: photos.id, jobId: photos.jobId, filePath: photos.filePath, status: jobs.status })
     .from(photos)
     .innerJoin(jobs, eq(jobs.id, photos.jobId))
     .where(and(eq(photos.id, photoId), eq(photos.userId, me.id), eq(photos.tenantId, me.tenantId)));
@@ -144,6 +145,7 @@ export async function deletePhoto(photoId: string): Promise<FieldResult> {
   if (p.status !== "laufend" && p.status !== "geplant" && p.status !== "nacharbeit")
     return { ok: false, error: "Nach Abschluss können Fotos nicht mehr gelöscht werden." };
   await db.delete(photos).where(eq(photos.id, photoId));
+  await deleteFiles([p.filePath]);
   revalidatePath(`/ma/einsatz/${p.jobId}`);
   return { ok: true };
 }

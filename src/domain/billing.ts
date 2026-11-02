@@ -125,6 +125,31 @@ export function totals(lines: { totalCents: number }[], kleinunternehmer: boolea
   return { netCents, vatCents, totalCents: netCents + vatCents };
 }
 
+// ---------- Storno ----------
+
+/** Was zum Einordnen einer Rechnung nötig ist. */
+export type CountableInvoice = { status: string; kind: string };
+
+/** Ausgestellte Belege (auch stornierte Rechnungen und Stornorechnungen) – zusammen ergeben sie den Umsatz. */
+export const ISSUED_STATUSES = ["final", "bezahlt", "storniert"] as const;
+
+/** Offen ist nur eine finalisierte, unbezahlte Rechnung – keine Stornorechnung. */
+export const isOpen = (inv: CountableInvoice) => inv.kind === "rechnung" && inv.status === "final";
+
+export const canCancel = (inv: CountableInvoice) => inv.kind === "rechnung" && (inv.status === "final" || inv.status === "bezahlt");
+
+// 0 statt -0, damit gespiegelte Nullbeträge nicht als "-0,00 €" erscheinen
+const neg = (n: number) => (n === 0 ? 0 : -n);
+
+/** Stornorechnung: dieselben Positionen mit negativer Menge und negativem Betrag – spiegelt die Rechnung exakt. */
+export function stornoLines<L extends { quantity: number; totalCents: number }>(lines: L[]): L[] {
+  return lines.map((l) => ({ ...l, quantity: neg(l.quantity), totalCents: neg(l.totalCents) }));
+}
+
+export function stornoTotals(inv: { netCents: number; vatCents: number; totalCents: number }) {
+  return { netCents: neg(inv.netCents), vatCents: neg(inv.vatCents), totalCents: neg(inv.totalCents) };
+}
+
 /** Rechnungsnummer z. B. RE-2026-0001 */
 export function formatInvoiceNumber(prefix: string, year: number, seq: number): string {
   return `${prefix}-${year}-${String(seq).padStart(4, "0")}`;

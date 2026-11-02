@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import Link from "next/link";
 import { EmptyState, Field, PageHeader, selectClass } from "@/components/bits";
 import { SubmitButton } from "@/components/client-bits";
@@ -23,7 +23,11 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
   const sp = await searchParams;
   const me = await requireOwner();
   const [customers, [tenant]] = await Promise.all([
-    db.select().from(schema.customers).where(eq(schema.customers.tenantId, me.tenantId)).orderBy(asc(schema.customers.name)),
+    db
+      .select()
+      .from(schema.customers)
+      .where(and(eq(schema.customers.tenantId, me.tenantId), isNull(schema.customers.anonymizedAt)))
+      .orderBy(asc(schema.customers.name)),
     db.select().from(schema.tenants).where(eq(schema.tenants.id, me.tenantId)),
   ]);
   const month = sp.m && /^\d{4}-\d{2}$/.test(sp.m) ? sp.m : previousMonth();

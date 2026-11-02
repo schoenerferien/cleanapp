@@ -1,5 +1,5 @@
 import "server-only";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 // Lokale Ablage für den POC. Im Zielsystem: S3-kompatibler EU-Speicher mit presigned URLs.
@@ -30,4 +30,14 @@ export async function findFile(key: string): Promise<Buffer | null> {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw err;
   }
+}
+
+/** Löscht eine Datei; fehlt sie schon, ist das kein Fehler. */
+export async function deleteFile(key: string): Promise<void> {
+  await rm(resolveKey(key), { force: true });
+}
+
+/** Löscht mehrere Dateien nach dem Löschen ihrer Datensätze. Fehler werden protokolliert, nicht geworfen. */
+export async function deleteFiles(keys: string[]): Promise<void> {
+  for (const key of keys) await deleteFile(key).catch((err) => console.error(`Datei ${key} konnte nicht gelöscht werden`, err));
 }

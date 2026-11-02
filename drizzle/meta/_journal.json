@@ -15,6 +15,20 @@
       "when": 1791036846992,
       "tag": "0001_invoice_immutability",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793564136055,
+      "tag": "0002_storno_datenschutz_2fa",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793564137033,
+      "tag": "0003_invoice_storno_guard",
+      "breakpoints": true
     }
   ]
 }

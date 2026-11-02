@@ -20,7 +20,7 @@ export type BackupAuditData = { rows: number; files: number; missing: number; by
 
 const { tenants, user, customers, sites, jobs, jobAssignments, timeEntries, photos, invoices, invoiceLines, auditLog, aiInvocations } = schema;
 
-// In Einspiel-Reihenfolge (Fremdschlüssel). Nicht dabei: session, account (Passwort-Hashes), verification.
+// In Einspiel-Reihenfolge (Fremdschlüssel). Nicht dabei: session, account (Passwort-Hashes), two_factor (Schlüssel), verification.
 const TABLES: { table: PgTable; tenantColumn: PgColumn }[] = [
   { table: tenants, tenantColumn: tenants.id },
   { table: user, tenantColumn: user.tenantId },

@@ -27,7 +27,7 @@ async function main() {
 
   await db.execute(sql`TRUNCATE
     ai_invocations, audit_log, invoice_lines, invoices, photos, time_entries, job_assignments, jobs,
-    sites, customers, session, account, verification, "user", tenants CASCADE`);
+    sites, customers, session, account, two_factor, verification, "user", tenants CASCADE`);
 
   const [tenant] = await db
     .insert(schema.tenants)

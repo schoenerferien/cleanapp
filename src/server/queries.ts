@@ -1,6 +1,7 @@
 import "server-only";
-import { and, asc, eq, gte, inArray, lte, ne, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lte, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { ISSUED_STATUSES } from "@/domain/billing";
 import { minijobLimitAt, minijobStatus } from "@/domain/limits";
 import { earningsCents, effectiveMinutes, monthRange, todayBerlin } from "@/domain/time";
 
@@ -72,7 +73,7 @@ export async function listEmployees(tenantId: string) {
   return db
     .select()
     .from(user)
-    .where(and(eq(user.tenantId, tenantId), eq(user.role, "employee")))
+    .where(and(eq(user.tenantId, tenantId), eq(user.role, "employee"), isNull(user.anonymizedAt)))
     .orderBy(asc(user.name));
 }
 
@@ -128,7 +129,7 @@ export async function employeeMonthStats(tenantId: string, month: string) {
   });
 }
 
-/** Umsatz (finalisierte Rechnungen) im Kalenderjahr – Basis der KU-Ampel. */
+/** Umsatz (alle ausgestellten Belege, Stornorechnungen zählen negativ) im Kalenderjahr – Basis der KU-Ampel. */
 export async function revenueInYear(tenantId: string, year: number): Promise<number> {
   const [row] = await db
     .select({ sum: sql<string>`coalesce(sum(${invoices.totalCents}), 0)` })
@@ -136,7 +137,7 @@ export async function revenueInYear(tenantId: string, year: number): Promise<num
     .where(
       and(
         eq(invoices.tenantId, tenantId),
-        inArray(invoices.status, ["final", "bezahlt"]),
+        inArray(invoices.status, [...ISSUED_STATUSES]),
         gte(invoices.invoiceDate, `${year}-01-01`),
         lte(invoices.invoiceDate, `${year}-12-31`),
       ),

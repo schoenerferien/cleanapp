@@ -1,4 +1,5 @@
 import {
+  type AnyPgColumn,
   boolean,
   date,
   doublePrecision,
@@ -40,6 +41,10 @@ export const tenants = pgTable("tenants", {
   nextInvoiceNo: integer().notNull().default(1),
   kuLimitCents: integer().notNull().default(2_500_000),
   minijobLimitCents: integer().notNull().default(60_300),
+  // Löschfristen in Monaten (Seite „Datenschutz“); Arbeitszeiten mindestens 24 (§ 17 MiLoG)
+  retentionTimeMonths: integer().notNull().default(24),
+  retentionGpsMonths: integer().notNull().default(3),
+  retentionPhotoMonths: integer().notNull().default(24),
   createdAt: createdAt(),
 });
 
@@ -66,6 +71,12 @@ export const user = pgTable("user", {
   employmentType: text().$type<EmploymentType>(),
   phone: text(),
   active: boolean().notNull().default(true),
+  anonymizedAt: ts(),
+  // two-factor-Plugin
+  twoFactorEnabled: boolean().notNull().default(false),
+  // Kontosperre nach zu vielen Fehlversuchen – unabhängig von der IP (src/lib/auth.ts)
+  failedLogins: integer().notNull().default(0),
+  lockedUntil: ts(),
 });
 
 export const session = pgTable("session", {
@@ -99,6 +110,23 @@ export const account = pgTable("account", {
   updatedAt: ts().notNull().defaultNow(),
 });
 
+// TOTP-Geheimnis und Backup-Codes (verschlüsselt mit BETTER_AUTH_SECRET)
+export const twoFactor = pgTable(
+  "two_factor",
+  {
+    id: text().primaryKey(),
+    secret: text().notNull(),
+    backupCodes: text().notNull(),
+    userId: text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    verified: boolean().notNull().default(true),
+    failedVerificationCount: integer().notNull().default(0),
+    lockedUntil: ts(),
+  },
+  (t) => [index().on(t.userId), index().on(t.secret)],
+);
+
 export const verification = pgTable("verification", {
   id: text().primaryKey(),
   identifier: text().notNull(),
@@ -122,6 +150,7 @@ export const customers = pgTable("customers", {
   street: text(),
   zip: text(),
   city: text(),
+  anonymizedAt: ts(),
   createdAt: createdAt(),
 });
 
@@ -287,7 +316,9 @@ export const photos = pgTable(
 
 // ---------- Rechnungen ----------
 
-export type InvoiceStatus = "entwurf" | "final" | "bezahlt";
+export type InvoiceStatus = "entwurf" | "final" | "bezahlt" | "storniert";
+// Korrektur nur per Stornorechnung: eigene Nummer, alle Beträge negativ, verweist auf die stornierte Rechnung
+export type InvoiceKind = "rechnung" | "storno";
 export type InvoiceUnit = "Std" | "Einsatz" | "Monat" | "Pauschal";
 
 export type TenantSnapshot = {
@@ -323,6 +354,8 @@ export const invoices = pgTable(
       .notNull()
       .references(() => customers.id),
     number: text(),
+    kind: text().$type<InvoiceKind>().notNull().default("rechnung"),
+    cancelsInvoiceId: uuid().references((): AnyPgColumn => invoices.id),
     status: text().$type<InvoiceStatus>().notNull().default("entwurf"),
     invoiceDate: date({ mode: "string" }),
     periodMonth: text().notNull(), // YYYY-MM
@@ -336,7 +369,8 @@ export const invoices = pgTable(
     paidAt: ts(),
     createdAt: createdAt(),
   },
-  (t) => [uniqueIndex().on(t.tenantId, t.number), index().on(t.tenantId, t.periodMonth)],
+  // Eine Rechnung kann nur einmal storniert werden
+  (t) => [uniqueIndex().on(t.tenantId, t.number), index().on(t.tenantId, t.periodMonth), uniqueIndex().on(t.cancelsInvoiceId)],
 );
 
 export const invoiceLines = pgTable(

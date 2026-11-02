@@ -1,13 +1,13 @@
 import { audit } from "@/server/audit";
 import { BACKUP_ENTITY, buildBackup, type BackupAuditData } from "@/server/backup";
-import { getCurrentUser } from "@/server/session";
+import { getCurrentUser, isOwner } from "@/server/session";
 import { zipStream } from "@/server/zip";
 
 // Datensicherung als ZIP: Datenbank (JSON je Tabelle) + Fotos + Rechnungs-PDFs. Wird beim Herunterladen
 // erzeugt und gestreamt – es bleibt keine Kopie auf dem Server liegen.
 export async function GET() {
   const me = await getCurrentUser();
-  if (!me || me.role !== "owner") return new Response("Nicht erlaubt", { status: 403 });
+  if (!isOwner(me)) return new Response("Nicht erlaubt", { status: 403 });
 
   const backup = await buildBackup(me.tenantId);
   let bytes = 0;

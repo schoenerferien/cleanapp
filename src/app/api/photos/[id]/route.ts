@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { getCurrentUser } from "@/server/session";
+import { getCurrentUser, isOwner } from "@/server/session";
 import { safeImageContentType } from "@/lib/image-type";
 import { getFile } from "@/server/storage";
 
@@ -17,7 +17,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     .where(and(eq(photos.id, id), eq(photos.tenantId, me.tenantId)));
   if (!photo) return new Response("Nicht gefunden", { status: 404 });
 
-  if (me.role !== "owner") {
+  if (!isOwner(me)) {
     const [assigned] = await db
       .select({ jobId: jobAssignments.jobId })
       .from(jobAssignments)

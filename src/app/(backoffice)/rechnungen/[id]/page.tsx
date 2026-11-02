@@ -1,5 +1,5 @@
-import { and, asc, eq } from "drizzle-orm";
-import { CheckCircle2, FileDown, Lock, Plus, Trash2 } from "lucide-react";
+import { and, asc, eq, type SQL } from "drizzle-orm";
+import { Ban, CheckCircle2, FileDown, Lock, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader, selectClass } from "@/components/bits";
@@ -8,11 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 import { db, schema } from "@/db";
-import { KU_HINWEIS, monthLabel } from "@/domain/billing";
+import { canCancel, KU_HINWEIS, monthLabel } from "@/domain/billing";
 import { dateDe, dateTimeDe, decimal2, euro } from "@/domain/format";
-import { addDraftLine, deleteDraft, deleteDraftLine, finalizeInvoice, markPaid, updateDraftLine } from "@/server/actions/invoices";
+import { addDraftLine, cancelInvoice, deleteDraft, deleteDraftLine, finalizeInvoice, markPaid, updateDraftLine } from "@/server/actions/invoices";
 import { centsToInput } from "@/server/form";
 import { requireOwner } from "@/server/session";
 
@@ -27,7 +29,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
     .where(and(eq(invoices.id, id), eq(invoices.tenantId, me.tenantId)));
   if (!row) notFound();
   const { inv } = row;
-  const [lines, billedJobs] = await Promise.all([
+  const [lines, billedJobs, [cancels], [cancelledBy]] = await Promise.all([
     db.select().from(invoiceLines).where(eq(invoiceLines.invoiceId, id)).orderBy(asc(invoiceLines.position)),
     db
       .select({ id: jobs.id, date: jobs.date, title: jobs.title, siteName: sites.name })
@@ -35,12 +37,16 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       .innerJoin(sites, eq(sites.id, jobs.siteId))
       .where(eq(jobs.invoiceId, id))
       .orderBy(asc(jobs.date)),
+    inv.cancelsInvoiceId ? relatedInvoice(eq(invoices.id, inv.cancelsInvoiceId)) : [],
+    inv.status === "storniert" ? relatedInvoice(eq(invoices.cancelsInvoiceId, inv.id)) : [],
   ]);
   const draft = inv.status === "entwurf";
+  const storno = inv.kind === "storno";
+  const title = storno ? "Stornorechnung" : "Rechnung";
 
   return (
     <>
-      <PageHeader title={inv.number ? `Rechnung ${inv.number}` : "Rechnungsentwurf"} description={`${row.customerName} · Leistungszeitraum ${monthLabel(inv.periodMonth)}`}>
+      <PageHeader title={inv.number ? `${title} ${inv.number}` : "Rechnungsentwurf"} description={`${row.customerName} · Leistungszeitraum ${monthLabel(inv.periodMonth)}`}>
         <Button variant="outline" asChild>
           <a href={`/api/invoices/${inv.id}/pdf`} target="_blank" rel="noreferrer">
             <FileDown /> {draft ? "PDF-Vorschau" : "PDF"}
@@ -152,6 +158,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
               <CardTitle className="flex items-center gap-2">
                 {draft ? "Entwurf" : <><Lock className="size-4" /> Finalisiert</>}
                 {inv.status === "bezahlt" && <Badge className="border-transparent bg-emerald-100 text-emerald-800">bezahlt</Badge>}
+                {inv.status === "storniert" && <Badge className="border-transparent bg-red-100 text-red-800">storniert</Badge>}
               </CardTitle>
               <CardDescription>
                 {draft
@@ -160,6 +167,24 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
+              {cancels && (
+                <p className="text-sm">
+                  Storniert die Rechnung{" "}
+                  <Link href={`/rechnungen/${cancels.id}`} className="font-medium underline">
+                    {cancels.number}
+                  </Link>{" "}
+                  vom {dateDe(cancels.invoiceDate!)}.
+                </p>
+              )}
+              {cancelledBy && (
+                <p className="text-sm">
+                  Storniert durch die Stornorechnung{" "}
+                  <Link href={`/rechnungen/${cancelledBy.id}`} className="font-medium underline">
+                    {cancelledBy.number}
+                  </Link>{" "}
+                  vom {dateDe(cancelledBy.invoiceDate!)}. Diese Rechnung bleibt unverändert erhalten.
+                </p>
+              )}
               {draft ? (
                 <>
                   <ConfirmForm action={finalizeInvoice.bind(null, inv.id)} message="Rechnung jetzt finalisieren? Danach sind keine Änderungen mehr möglich.">
@@ -174,7 +199,8 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
                   </ConfirmForm>
                 </>
               ) : (
-                inv.status === "final" && (
+                inv.status === "final" &&
+                !storno && (
                   <form action={markPaid.bind(null, inv.id)}>
                     <SubmitButton variant="secondary" className="w-full">
                       <CheckCircle2 /> Als bezahlt markieren
@@ -185,22 +211,60 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Leistungsnachweis</CardTitle>
-              <CardDescription>{billedJobs.length} Einsätze – werden mit Zeiten und Fotos an die Rechnung angehängt.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-1 text-sm">
-              {billedJobs.map((j) => (
-                <Link key={j.id} href={`/einsaetze/${j.id}`} className="flex justify-between gap-2 hover:underline">
-                  <span className="truncate">{j.siteName}</span>
-                  <span className="shrink-0 text-muted-foreground">{dateDe(j.date)}</span>
-                </Link>
-              ))}
-            </CardContent>
-          </Card>
+          {canCancel(inv) && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Korrigieren</CardTitle>
+                <CardDescription>
+                  Eine ausgestellte Rechnung wird nicht geändert, sondern storniert: Es entsteht eine Stornorechnung mit eigener Nummer und negativen
+                  Beträgen. Die Einsätze werden wieder frei.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ConfirmForm
+                  action={cancelInvoice.bind(null, inv.id)}
+                  message={`Rechnung ${inv.number} stornieren? Die Stornorechnung erhält die nächste Nummer – das lässt sich nicht rückgängig machen.`}
+                  className="space-y-3"
+                >
+                  <div className="space-y-1.5">
+                    <Label htmlFor="reason">Grund (nur intern, fürs Protokoll)</Label>
+                    <Textarea id="reason" name="reason" rows={2} placeholder="z. B. falscher Stundensatz" />
+                  </div>
+                  <label className="flex items-start gap-2 text-sm">
+                    <input type="checkbox" name="correct" defaultChecked className="mt-0.5 size-4" />
+                    <span>Korrigierte Rechnung als Entwurf anlegen (mit den bisherigen Positionen)</span>
+                  </label>
+                  <SubmitButton variant="destructive" className="w-full" pendingText="Storniere …">
+                    <Ban /> Rechnung stornieren
+                  </SubmitButton>
+                </ConfirmForm>
+              </CardContent>
+            </Card>
+          )}
+
+          {!storno && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Leistungsnachweis</CardTitle>
+                <CardDescription>{billedJobs.length} Einsätze – werden mit Zeiten und Fotos an die Rechnung angehängt.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-1 text-sm">
+                {billedJobs.map((j) => (
+                  <Link key={j.id} href={`/einsaetze/${j.id}`} className="flex justify-between gap-2 hover:underline">
+                    <span className="truncate">{j.siteName}</span>
+                    <span className="shrink-0 text-muted-foreground">{dateDe(j.date)}</span>
+                  </Link>
+                ))}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </>
   );
+}
+
+function relatedInvoice(where: SQL) {
+  const { invoices } = schema;
+  return db.select({ id: invoices.id, number: invoices.number, invoiceDate: invoices.invoiceDate }).from(invoices).where(where);
 }
