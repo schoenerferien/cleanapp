@@ -20,8 +20,8 @@ kündbar etwas teurer.
 
 - Root-Server statt VPS wegen der zugesagten Verfügbarkeit von 99,9 % – für VPS gibt netcup keine Zusage. Die App hat
   keinen Offline-Modus: Ist der Server weg, kann niemand stempeln.
-- 4 GB RAM reichen: `npm run build` braucht in der Spitze rund 1,7 GB (gemessen), und beim Update ist der Dienst gestoppt.
-  Dazu 2 GB Swap als Reserve (Abschnitt 1).
+- 4 GB RAM reichen gut: `npm run build` braucht in der Spitze rund 1,2 GB (gemessen, ohne Build-Cache), und beim Update
+  ist der Dienst gestoppt. Swap (Abschnitt 1) ist damit nur Reserve; bei 2 GB RAM ist er nötig.
 - 64 GB reichen für Jahre: Fotos sind höchstens 0,5 MB groß, bei 10 Einsätzen mit je 4 Fotos am Tag sind das etwa 4 GB
   im Jahr. Mehr Platz lässt sich bei netcup als Block Storage nachbuchen.
 - Mehr Reserve: RS 1000 G12.5 (4 Kerne, 8 GB, 128 GB NVMe) für 21,73 €/Monat.
@@ -33,7 +33,7 @@ kündbar etwas teurer.
 
 - Domain bzw. Subdomain (z. B. `app.firma.de`) mit A-/AAAA-Eintrag auf die Server-IP.
 - Firewall: nur 22, 80 und 443 offen.
-- Swap als Reserve für `npm run build` – nur wenn `swapon --show` noch nichts anzeigt.
+- Swap für `npm run build` (bei 4 GB RAM nur Reserve) – nur wenn `swapon --show` noch nichts anzeigt.
 
 ```bash
 sudo ufw allow OpenSSH && sudo ufw allow 80,443/tcp && sudo ufw enable
