@@ -41,7 +41,7 @@ export default async function BackupPage() {
               </a>
             </Button>
             <p className="text-xs text-muted-foreground">
-              Nicht enthalten sind Passwörter, PINs und Anmeldesitzungen – nach einer Wiederherstellung bekommen alle neue Zugangsdaten.
+              Nicht enthalten sind Passwörter, PINs, Zwei-Faktor-Schlüssel und Anmeldesitzungen – nach einer Wiederherstellung bekommen alle neue Zugangsdaten.
             </p>
           </CardContent>
         </Card>

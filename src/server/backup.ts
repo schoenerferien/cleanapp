@@ -168,7 +168,7 @@ export async function buildBackup(tenantId: string) {
         ? ["", `ACHTUNG: ${missing.length} Datei(en) fehlten auf dem Server und sind nicht enthalten – Liste in backup.json unter "missing".`]
         : []),
       "",
-      "Nicht enthalten: Passwörter, PINs und Anmeldesitzungen (aus Sicherheitsgründen).",
+      "Nicht enthalten: Passwörter, PINs, Zwei-Faktor-Schlüssel und Anmeldesitzungen (aus Sicherheitsgründen).",
       "Nach einer Wiederherstellung bekommen alle neue Zugangsdaten.",
       "",
       "Bitte sicher aufbewahren: Das Backup enthält personenbezogene Daten von Mitarbeitern und Kunden",

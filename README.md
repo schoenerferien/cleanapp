@@ -3,7 +3,7 @@
 Lokaler Prototyp für eine Reinigungs-Neugründung (Gründerin + 2–3 Angestellte, Einsätze in mehreren Regionen):
 Einsätze planen, per Handy stempeln und mit Fotos dokumentieren, Einsätze kontrollieren (mit KI-Hinweisen von Mistral) und Rechnungen als Kleinunternehmerin (§ 19 UStG) schreiben.
 
-Plan und Abgrenzung: [`../docs/poc-plan.md`](../docs/poc-plan.md) · Gesamtplan: [`../docs/gesamtplan.md`](../docs/gesamtplan.md)
+Plan und Abgrenzung: `docs/poc-plan.md` · Gesamtplan: `docs/gesamtplan.md` – beide im Repo `cleaningHub` (Vorgänger dieses Repos)
 
 ## Starten
 

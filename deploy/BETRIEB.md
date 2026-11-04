@@ -11,20 +11,42 @@ Internet ──443──▶ Caddy (HTTPS, HSTS) ──▶ 127.0.0.1:3000 Next.js
 > **Vor echten Daten:** Backups (Datenbank + `/var/lib/cleaninghub`) einrichten und eine Wiederherstellung einmal testen.
 > Diese Anleitung deckt Backups noch nicht ab.
 
+## Server mieten
+
+Empfehlung (Stand November 2026): **netcup Root-Server RS 500 G12.5** – 2 dedizierte Kerne, 4 GB RAM, 64 GB NVMe,
+Image Ubuntu 24.04. Standort **Nürnberg** ausdrücklich wählen; die Voreinstellung „Keine Präferenz Europa“ kann auch Wien
+bedeuten. 12,93 €/Monat bei 12 Monaten Laufzeit (inkl. MwSt., zzgl. Aufschlag für den festen Standort); monatlich
+kündbar etwas teurer.
+
+- Root-Server statt VPS wegen der zugesagten Verfügbarkeit von 99,9 % – für VPS gibt netcup keine Zusage. Die App hat
+  keinen Offline-Modus: Ist der Server weg, kann niemand stempeln.
+- 4 GB RAM reichen: `npm run build` braucht in der Spitze rund 1,7 GB (gemessen), und beim Update ist der Dienst gestoppt.
+  Dazu 2 GB Swap als Reserve (Abschnitt 1).
+- 64 GB reichen für Jahre: Fotos sind höchstens 0,5 MB groß, bei 10 Einsätzen mit je 4 Fotos am Tag sind das etwa 4 GB
+  im Jahr. Mehr Platz lässt sich bei netcup als Block Storage nachbuchen.
+- Mehr Reserve: RS 1000 G12.5 (4 Kerne, 8 GB, 128 GB NVMe) für 21,73 €/Monat.
+- Vor echten Daten mit netcup einen **AV-Vertrag** nach Art. 28 DSGVO abschließen – Vertragspartner ist die Firma.
+- Snapshots sind im Tarif enthalten (vor jedem Update einen anlegen), liegen aber auf demselben Speicher und ersetzen kein
+  Backup an einem anderen Ort.
+
 ## 1. Vorbereitung
 
 - Domain bzw. Subdomain (z. B. `app.firma.de`) mit A-/AAAA-Eintrag auf die Server-IP.
 - Firewall: nur 22, 80 und 443 offen.
+- Swap als Reserve für `npm run build` – nur wenn `swapon --show` noch nichts anzeigt.
 
 ```bash
 sudo ufw allow OpenSSH && sudo ufw allow 80,443/tcp && sudo ufw enable
+
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 ```
 
 ## 2. Pakete
 
 ```bash
-# Node.js 22 (NodeSource), PostgreSQL, Caddy
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -
+# Node.js 24 (NodeSource), PostgreSQL, Caddy
+curl -fsSL https://deb.nodesource.com/setup_24.x | sudo bash -
 sudo apt install -y nodejs postgresql git unzip
 sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
 curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
@@ -49,7 +71,7 @@ echo "$DBPASS"   # für DATABASE_URL notieren
 ```bash
 sudo -iu cleaninghub
 git clone <privates-repo> /opt/cleaninghub/repo   # oder per scp kopieren
-cd /opt/cleaninghub/repo/poc
+cd /opt/cleaninghub/repo
 npm ci
 ```
 
@@ -81,17 +103,17 @@ sichert die Notfall-Codes. Danach unter *Konto und Sicherheit* ein eigenes Passw
 
 ```bash
 sudo -iu cleaninghub
-cd /opt/cleaninghub/repo/poc
+cd /opt/cleaninghub/repo
 npm run zugang:zuruecksetzen -- login@firma.de   # neues Startpasswort, Zwei-Faktor beim nächsten Login neu einrichten
 ```
 
 ## 5. Dienst und HTTPS starten
 
 ```bash
-sudo cp /opt/cleaninghub/repo/poc/deploy/cleaninghub.service /etc/systemd/system/
+sudo cp /opt/cleaninghub/repo/deploy/cleaninghub.service /etc/systemd/system/
 sudo systemctl daemon-reload && sudo systemctl enable --now cleaninghub
 
-sudo cp /opt/cleaninghub/repo/poc/deploy/Caddyfile /etc/caddy/Caddyfile
+sudo cp /opt/cleaninghub/repo/deploy/Caddyfile /etc/caddy/Caddyfile
 sudo sed -i 's/app.example.de/app.firma.de/' /etc/caddy/Caddyfile
 sudo systemctl reload caddy
 ```
@@ -109,13 +131,20 @@ journalctl -u cleaninghub -f      # Logs der App
 
 ## Updates
 
+Vorher im netcup Server Control Panel einen Snapshot anlegen – geht beim Update etwas schief, ist der alte Stand mit
+einem Klick zurück.
+
 ```bash
+sudo systemctl stop cleaninghub   # npm ci und build tauschen node_modules und .next aus, die der laufende Dienst nutzt
 sudo -iu cleaninghub
-cd /opt/cleaninghub/repo && git pull && cd poc
+cd /opt/cleaninghub/repo && git pull
 npm ci && npm run db:migrate && npm run build
 exit
-sudo systemctl restart cleaninghub
+sudo systemctl start cleaninghub
 ```
+
+Hat sich etwas unter `deploy/` geändert, `cleaninghub.service` bzw. `Caddyfile` wie in Abschnitt 5 neu kopieren
+(im Caddyfile die Domain wieder eintragen).
 
 ## Monatsarchiv
 
@@ -127,10 +156,10 @@ Das Dashboard erinnert, bis das Archiv des Vormonats heruntergeladen wurde.
 
 Unter **Datensicherung** lädt die Firma jederzeit ein komplettes Backup als ZIP herunter: alle Tabellen der Firma als JSON,
 alle Fotos und alle ausgestellten Rechnungs-PDFs, dazu `backup.json` (Manifest), `PRUEFSUMMEN.sha256` und `LIESMICH.txt`
-mit der Anleitung zur Wiederherstellung. Passwörter, PINs und Sitzungen sind nicht enthalten.
+mit der Anleitung zur Wiederherstellung. Passwörter, PINs, Zwei-Faktor-Schlüssel und Sitzungen sind nicht enthalten.
 
 Das ZIP wird beim Herunterladen erzeugt und gestreamt – auf dem Server bleibt keine Kopie liegen, und der Speicherbedarf
-wächst nicht mit der Datenmenge. Die automatischen Server-Backups (oben) ersetzt das nicht.
+wächst nicht mit der Datenmenge. Automatische Server-Backups ersetzt das nicht – die fehlen noch (siehe Hinweis oben).
 
 ## Datenschutz und Löschfristen
 
