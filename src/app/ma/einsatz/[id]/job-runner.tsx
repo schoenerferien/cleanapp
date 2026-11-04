@@ -1,7 +1,7 @@
 "use client";
 
 import imageCompression from "browser-image-compression";
-import { Camera, CheckCircle2, Loader2, MapPin, Navigation, Play, Square, Trash2, TriangleAlert } from "lucide-react";
+import { Camera, CheckCircle2, Loader2, MapPin, /* Navigation, */ Play, Square, Trash2, TriangleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -81,10 +81,11 @@ export function JobRunner({
   }, [running]);
 
   const count = (k: string) => photos.filter((p) => p.kind === k).length;
-  const navUrl =
-    job.lat != null && job.lng != null
-      ? `https://www.google.com/maps/dir/?api=1&destination=${job.lat},${job.lng}`
-      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${job.street ?? ""} ${job.zip ?? ""} ${job.city ?? ""}`)}`;
+  // Vorerst abgeschaltet (Datenschutz: öffnet Google Maps mit der Kundenadresse) – Wiedereinbau nach Absprache, siehe README.
+  // const navUrl =
+  //   job.lat != null && job.lng != null
+  //     ? `https://www.google.com/maps/dir/?api=1&destination=${job.lat},${job.lng}`
+  //     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${job.street ?? ""} ${job.zip ?? ""} ${job.city ?? ""}`)}`;
 
   function onStart() {
     startTransition(async () => {
@@ -129,11 +130,12 @@ export function JobRunner({
           </div>
           <StatusBadge status={running ? "laufend" : job.status} />
         </div>
+        {/* Vorerst abgeschaltet, siehe navUrl
         <Button variant="outline" className="h-11 w-full" asChild>
           <a href={navUrl} target="_blank" rel="noreferrer">
             <Navigation /> Navigation starten
           </a>
-        </Button>
+        </Button> */}
       </section>
 
       {job.status === "nacharbeit" && job.reviewComment && (

@@ -1,3 +1,11 @@
+// Vorerst abgeschaltet – Wiedereinbau nach Absprache, siehe README:
+// - react-leaflet steht unter der Hippocratic License 2.1 (Nutzung an Menschenrechts- und Arbeitsstandards gebunden).
+// - Die Kartenkacheln lädt der Browser von tile.openstreetmap.org, dabei geht die IP-Adresse an die OSM Foundation (UK).
+// Zum Einschalten: npm install leaflet@^1.9.4 react-leaflet@^5.0.0 && npm install -D @types/leaflet@^1.9.22,
+// den Code unten einkommentieren (ohne `export {}`) und die markierten Stellen in einsaetze/page.tsx zurückholen.
+export {};
+
+/*
 "use client";
 
 import "leaflet/dist/leaflet.css";
@@ -44,3 +52,4 @@ export default function SiteMap({ points, height = 420 }: { points: MapPoint[]; 
     </MapContainer>
   );
 }
+*/

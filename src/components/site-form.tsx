@@ -36,7 +36,8 @@ export function SiteForm({
       <Field label="Geofence (Meter)" hint="Abstand, ab dem beim Stempeln gewarnt wird">
         <Input name="geofenceM" type="number" min={50} step={10} defaultValue={site?.geofenceM ?? 200} />
       </Field>
-      <Field label="Breitengrad" hint="Leer lassen = automatisch aus Adresse">
+      {/* Bei aktiver Adresssuche (vorerst abgeschaltet, siehe actions/masterdata.ts): hint="Leer lassen = automatisch aus Adresse" */}
+      <Field label="Breitengrad" hint="z. B. 53.5511 – ohne Koordinaten keine Abstandsprüfung beim Stempeln">
         <Input name="lat" defaultValue={site?.lat ?? ""} />
       </Field>
       <Field label="Längengrad">

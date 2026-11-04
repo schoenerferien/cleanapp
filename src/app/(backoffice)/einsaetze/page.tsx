@@ -1,11 +1,12 @@
 import { and, asc, eq } from "drizzle-orm";
-import { ChevronLeft, ChevronRight, List, Map as MapIcon, Sparkles, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, /* List, Map as MapIcon, */ Sparkles, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { aiEnabled } from "@/ai/mistral";
 import { EmptyState, Field, PageHeader, selectClass, StatusBadge } from "@/components/bits";
 import { SubmitButton } from "@/components/client-bits";
-import { SiteMapLazy } from "@/components/site-map-lazy";
-import type { MapPoint } from "@/components/site-map";
+// Kartenansicht vorerst abgeschaltet, siehe src/components/site-map.tsx
+// import { SiteMapLazy } from "@/components/site-map-lazy";
+// import type { MapPoint } from "@/components/site-map";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,13 +18,14 @@ import { createJob, deleteJob } from "@/server/actions/jobs";
 import { listEmployees, listJobs, listRegions } from "@/server/queries";
 import { requireOwner } from "@/server/session";
 
-const statusColor: Record<string, string> = {
-  geplant: "#64748b",
-  laufend: "#0284c7",
-  erledigt: "#d97706",
-  abgenommen: "#059669",
-  nacharbeit: "#dc2626",
-};
+// Kartenansicht vorerst abgeschaltet
+// const statusColor: Record<string, string> = {
+//   geplant: "#64748b",
+//   laufend: "#0284c7",
+//   erledigt: "#d97706",
+//   abgenommen: "#059669",
+//   nacharbeit: "#dc2626",
+// };
 
 export default async function JobsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const sp = await searchParams;
@@ -54,23 +56,24 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
   };
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-  const points: MapPoint[] = [];
-  for (const r of rows) {
-    if (r.lat == null || r.lng == null) continue;
-    const existing = points.find((p) => p.id === r.siteId);
-    const line = `${dateDe(r.date).slice(0, 6)} ${r.plannedStart} · ${r.assignees.map((a) => a.name.split(" ")[0]).join(", ") || "offen"}`;
-    if (existing) existing.lines!.push(line);
-    else
-      points.push({
-        id: r.siteId,
-        lat: r.lat,
-        lng: r.lng,
-        title: r.siteName,
-        subtitle: `${r.customerName} · ${r.region}`,
-        lines: [line],
-        color: statusColor[r.status],
-      });
-  }
+  // Kartenansicht vorerst abgeschaltet
+  // const points: MapPoint[] = [];
+  // for (const r of rows) {
+  //   if (r.lat == null || r.lng == null) continue;
+  //   const existing = points.find((p) => p.id === r.siteId);
+  //   const line = `${dateDe(r.date).slice(0, 6)} ${r.plannedStart} · ${r.assignees.map((a) => a.name.split(" ")[0]).join(", ") || "offen"}`;
+  //   if (existing) existing.lines!.push(line);
+  //   else
+  //     points.push({
+  //       id: r.siteId,
+  //       lat: r.lat,
+  //       lng: r.lng,
+  //       title: r.siteName,
+  //       subtitle: `${r.customerName} · ${r.region}`,
+  //       lines: [line],
+  //       color: statusColor[r.status],
+  //     });
+  // }
 
   return (
     <>
@@ -88,6 +91,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
             <ChevronRight />
           </Link>
         </Button>
+        {/* Kartenansicht vorerst abgeschaltet
         <Button variant={view === "liste" ? "default" : "outline"} asChild>
           <Link href={qs({ ansicht: "liste" })}>
             <List /> Liste
@@ -97,7 +101,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
           <Link href={qs({ ansicht: "karte" })}>
             <MapIcon /> Karte
           </Link>
-        </Button>
+        </Button> */}
       </PageHeader>
 
       <form className="mb-4 grid gap-2 sm:grid-cols-4" action="/einsaetze">
@@ -134,9 +138,10 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
 
       <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
         <div>
+          {/* Kartenansicht vorerst abgeschaltet
           {view === "karte" ? (
             <SiteMapLazy points={points} />
-          ) : (
+          ) : ( */}
             <div className="space-y-4">
               {days.map((d) => {
                 const dayRows = rows.filter((r) => r.date === d);
@@ -185,7 +190,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
               })}
               {rows.length === 0 && <EmptyState>Keine Einsätze in dieser Woche für den Filter.</EmptyState>}
             </div>
-          )}
+          {/* )} */}
         </div>
 
         <Card className="h-fit">

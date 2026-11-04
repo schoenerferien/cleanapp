@@ -8,7 +8,7 @@ import { db, schema } from "@/db";
 import type { BillingModel, EmploymentType } from "@/db/schema";
 import { audit } from "@/server/audit";
 import { euroToCents, int, lines, optFloat, optStr, str } from "@/server/form";
-import { geocode } from "@/server/geocode";
+// import { geocode } from "@/server/geocode";
 import { requireOwner } from "@/server/session";
 
 const { tenants, customers, sites, user, account, session } = schema;
@@ -92,11 +92,13 @@ async function siteValues(fd: FormData) {
   };
   if (!values.name) throw new Error("Objektname fehlt");
   if (!["hourly", "per_visit", "monthly_flat"].includes(values.billingModel)) throw new Error("Abrechnungsmodell fehlt");
-  // Koordinaten automatisch ermitteln, wenn keine angegeben sind
-  if ((values.lat == null || values.lng == null) && values.street && values.city) {
-    const pos = await geocode(`${values.street}, ${values.zip ?? ""} ${values.city}`);
-    if (pos) Object.assign(values, pos);
-  }
+  // Vorerst abgeschaltet (Datenschutz: die Kundenadresse geht an OpenStreetMap Nominatim) – Wiedereinbau nach Absprache,
+  // siehe README. Bis dahin Koordinaten von Hand eintragen, sonst prüft die App beim Stempeln keinen Abstand zum Objekt.
+  // // Koordinaten automatisch ermitteln, wenn keine angegeben sind
+  // if ((values.lat == null || values.lng == null) && values.street && values.city) {
+  //   const pos = await geocode(`${values.street}, ${values.zip ?? ""} ${values.city}`);
+  //   if (pos) Object.assign(values, pos);
+  // }
   return values;
 }
 

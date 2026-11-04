@@ -51,7 +51,7 @@ test.beforeAll(() => {
   execSync("npm run db:seed", { stdio: "ignore" });
 });
 
-test("1. Gründerin: Dashboard, Planung mit Wiederholung, Karte", async ({ page }) => {
+test("1. Gründerin: Dashboard, Planung mit Wiederholung", async ({ page }) => {
   await login(page, "gruenderin@glanzwerk.demo", "demo1234");
   await expect(page).toHaveURL(/\/dashboard/);
   await expect(page.getByText("Jetzt eingestempelt").first()).toBeVisible();
@@ -73,11 +73,12 @@ test("1. Gründerin: Dashboard, Planung mit Wiederholung, Karte", async ({ page 
   await expect(page.getByText("Glasreinigung Eingang")).toBeVisible();
   await page.screenshot({ path: `${SHOTS}/02-einsaetze.png`, fullPage: true });
 
-  await page.goto("/einsaetze?ansicht=karte&w=2026-10-05");
-  await expect(page.locator(".leaflet-container")).toBeVisible();
-  await expect(page.locator("path.leaflet-interactive").first()).toBeVisible();
-  await expect(page.locator("img.leaflet-tile-loaded").first()).toBeVisible({ timeout: 15_000 });
-  await page.screenshot({ path: `${SHOTS}/03-karte.png` });
+  // Kartenansicht vorerst abgeschaltet, siehe src/components/site-map.tsx
+  // await page.goto("/einsaetze?ansicht=karte&w=2026-10-05");
+  // await expect(page.locator(".leaflet-container")).toBeVisible();
+  // await expect(page.locator("path.leaflet-interactive").first()).toBeVisible();
+  // await expect(page.locator("img.leaflet-tile-loaded").first()).toBeVisible({ timeout: 15_000 });
+  // await page.screenshot({ path: `${SHOTS}/03-karte.png` });
 });
 
 test("2. Anna am Handy: Einstempeln, Checkliste, Fotos, Mangel, Beenden", async ({ browser }) => {

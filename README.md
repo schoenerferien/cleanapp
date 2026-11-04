@@ -1,7 +1,7 @@
 # CleaningHub – POC
 
 Lokaler Prototyp für eine Reinigungs-Neugründung (Gründerin + 2–3 Angestellte, Einsätze in mehreren Regionen):
-Einsätze planen, per Handy stempeln und mit Fotos dokumentieren, Einsätze kontrollieren (mit KI-Hinweisen von Mistral) und Rechnungen als Kleinunternehmerin (§ 19 UStG) schreiben.
+Einsätze planen, per Handy stempeln und mit Fotos dokumentieren, Einsätze kontrollieren und Rechnungen als Kleinunternehmerin (§ 19 UStG) schreiben.
 
 Plan und Abgrenzung: `docs/poc-plan.md` · Gesamtplan: `docs/gesamtplan.md` – beide im Repo `cleaningHub` (Vorgänger dieses Repos)
 
@@ -11,7 +11,7 @@ Voraussetzung: Node 22+. Docker ist nicht nötig – Postgres läuft aus `node_m
 
 ```bash
 npm install
-cp .env.example .env.local      # BETTER_AUTH_SECRET setzen, optional MISTRAL_API_KEY
+cp .env.example .env.local      # BETTER_AUTH_SECRET setzen
 npm run db:start                # Terminal 1: Postgres auf Port 5433 (läuft weiter)
 npm run db:migrate && npm run db:seed
 npm run dev                     # Terminal 2: http://localhost:3000
@@ -43,18 +43,32 @@ npm run tunnel                  # gibt eine https://….trycloudflare.com-Adress
 
 Die Adresse am Handy öffnen, als `anna` / `111111` anmelden und „Zum Home-Bildschirm“ hinzufügen.
 
-## KI-Fotoprüfung
+## Vorerst abgeschaltet
 
-**Standardmäßig aus.** Nur mit `KI_FOTOPRUEFUNG=an` **und** `MISTRAL_API_KEY` in `.env.local` prüft Mistral nach jedem
-beendeten Einsatz die Vorher-/Nachher-Fotos (unscharf? Person erkennbar? Verbesserung sichtbar?). Ist sie aus, gehen keine
-Fotos an Mistral und die App zeigt keine KI-Elemente. Modell über `MISTRAL_VISION_MODEL` (Standard `ministral-14b-latest`).
-Die Hinweise beziehen sich nur auf den Einsatz – es gibt keine Bewertung von Personen. Jeder Aufruf wird in
-`ai_invocations` protokolliert.
+Bis zur Absprache mit der Firma (Lizenz- bzw. Datenschutzprüfung) sind diese Teile auskommentiert, markiert mit
+„Vorerst abgeschaltet“ (`grep -rni "vorerst abgeschaltet" src e2e`):
+
+| Was | Warum | Wo |
+|---|---|---|
+| Kartenansicht unter *Einsätze* | `react-leaflet` steht unter der Hippocratic License 2.1 (Nutzung an Menschenrechts- und Arbeitsstandards gebunden); die Kartenkacheln lädt der Browser von OpenStreetMap, dabei geht die IP-Adresse an die OSM Foundation (UK) | `src/components/site-map*.tsx`, `src/app/(backoffice)/einsaetze/page.tsx`, `e2e/drehbuch.spec.ts` |
+| Adresssuche beim Speichern eines Objekts | Die Kundenadresse ging an OpenStreetMap Nominatim | `src/server/actions/masterdata.ts`, Hinweistext in `src/components/site-form.tsx` |
+| *Navigation starten* in der Mitarbeiter-App | Öffnete Google Maps mit der Kundenadresse | `src/app/ma/einsatz/[id]/job-runner.tsx` |
+| KI-Fotoprüfung | Fotos aus den Einsätzen gingen an Mistral | `src/ai/mistral.ts` (`aiEnabled`), `.env.example` |
+
+Ohne Adresssuche bleiben Breiten- und Längengrad neuer Objekte leer, bis sie jemand von Hand einträgt – ohne Koordinaten
+prüft die App beim Stempeln keinen Abstand zum Objekt. Die Demo-Objekte aus dem Seed haben Koordinaten.
+
+**Wieder einbauen:** die markierten Stellen einkommentieren, für die Karte zusätzlich
+`npm install leaflet@^1.9.4 react-leaflet@^5.0.0 && npm install -D @types/leaflet@^1.9.22`.
+Die KI-Fotoprüfung läuft danach nur mit `KI_FOTOPRUEFUNG=an` **und** `MISTRAL_API_KEY` in `.env.local`: Mistral prüft nach
+jedem beendeten Einsatz die Vorher-/Nachher-Fotos (unscharf? Person erkennbar? Verbesserung sichtbar?). Modell über
+`MISTRAL_VISION_MODEL` (Standard `ministral-14b-latest`). Die Hinweise beziehen sich nur auf den Einsatz – es gibt keine
+Bewertung von Personen. Jeder Aufruf wird in `ai_invocations` protokolliert.
 
 ## Demo-Ablauf
 
 1. **Gründerin** → Dashboard: wer ist gerade eingestempelt, was ist zu prüfen, Minijob- und Kleinunternehmer-Ampel.
-2. **Einsätze**: Woche, Filter nach Region/Mitarbeiter, Karte; neuen Einsatz „wöchentlich bis …“ anlegen.
+2. **Einsätze**: Woche, Filter nach Region/Mitarbeiter; neuen Einsatz „wöchentlich bis …“ anlegen.
 3. **Anna am Handy**: heutigen Einsatz öffnen → *Einsatz starten* (GPS-Abstand zum Objekt) → Checkliste,
    Vorher-/Nachher-Fotos, Mangel mit Foto, Notiz → *Einsatz beenden*.
 4. **Gründerin** → Einsatz prüfen: Fotos nebeneinander (mit KI-Hinweis, falls eingeschaltet), Zeit mit Begründung korrigieren, *Abnehmen* oder *Nacharbeit*.
@@ -97,7 +111,7 @@ src/
   app/api/            Auth, Foto-Upload/-Abruf, Rechnungs-PDF, CSV-Export, Monatsarchiv, Datensicherung
   domain/             reine Fachlogik mit Tests (wandert später nach packages/domain)
   server/             Session, Server Actions, Abfragen, Dateiablage
-  ai/                 Mistral-Client und Fotoprüfung
+  ai/                 Mistral-Client und Fotoprüfung (vorerst abgeschaltet)
   pdf/                Rechnungs-PDF (@react-pdf/renderer)
   db/                 Drizzle-Schema, Seed, Ersteinrichtung (firma-anlegen)
 drizzle/              Migrationen inkl. GoBD-Trigger (finalisierte Rechnungen unveränderbar)

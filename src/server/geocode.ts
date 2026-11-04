@@ -1,7 +1,7 @@
 import "server-only";
 
 // Adresse → Koordinaten über OpenStreetMap Nominatim (max. 1 Anfrage/s laut Nutzungsrichtlinie).
-// Im POC nur beim Speichern eines Objekts ohne Koordinaten.
+// Im POC nur beim Speichern eines Objekts ohne Koordinaten – vorerst abgeschaltet, siehe siteValues in actions/masterdata.ts.
 export async function geocode(address: string): Promise<{ lat: number; lng: number } | null> {
   try {
     const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=de&q=${encodeURIComponent(address)}`;

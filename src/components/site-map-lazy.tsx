@@ -1,3 +1,7 @@
+// Vorerst abgeschaltet – gehört zur Kartenansicht, siehe site-map.tsx.
+export {};
+
+/*
 "use client";
 
 import dynamic from "next/dynamic";
@@ -7,3 +11,4 @@ export const SiteMapLazy = dynamic(() => import("./site-map"), {
   ssr: false,
   loading: () => <div className="h-[420px] animate-pulse rounded-xl bg-muted" />,
 });
+*/
